@@ -119,6 +119,49 @@ export default {
       }
     }
 
+    if (path === "/fx") {
+      const from = (url.searchParams.get("from") || "").trim().toUpperCase();
+      const to = (url.searchParams.get("to") || "GBP").trim().toUpperCase();
+
+      if (!/^[A-Z]{3}$/.test(from) || !/^[A-Z]{3}$/.test(to)) {
+        return reply({ error: "Use three-letter currency codes." }, 400, headers);
+      }
+
+      if (from === to) {
+        return reply({
+          from, to, rate: 1, provider: "Morrow",
+          retrievedAt: new Date().toISOString()
+        }, 200, headers);
+      }
+
+      // London-listed instruments can be quoted in pence sterling.
+      if (from === "GBP" && to === "GBX") {
+        return reply({ from, to, rate: 100, provider: "Morrow", retrievedAt: new Date().toISOString() }, 200, headers);
+      }
+      if (from === "GBX" && to === "GBP") {
+        return reply({ from, to, rate: 0.01, provider: "Morrow", retrievedAt: new Date().toISOString() }, 200, headers);
+      }
+
+      try {
+        const data = await twelveData("exchange_rate", {
+          symbol: from + "/" + to
+        }, env);
+        const rate = Number(data.rate);
+        if (!Number.isFinite(rate) || rate <= 0) {
+          return reply({ error: "The provider did not return a valid exchange rate." }, 502, headers);
+        }
+        return reply({
+          from, to, rate,
+          timestamp: data.timestamp || null,
+          datetime: data.datetime || null,
+          provider: "Twelve Data",
+          retrievedAt: new Date().toISOString()
+        }, 200, headers);
+      } catch (error) {
+        return reply({ error: error.message || "Unable to retrieve the exchange rate." }, 502, headers);
+      }
+    }
+
     if (path === "/search") {
       const query = (url.searchParams.get("q") || "").trim();
       if (query.length < 2 || query.length > 80) {
