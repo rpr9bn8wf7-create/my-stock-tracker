@@ -144,6 +144,17 @@ canvas{display:block;width:100%;height:230px}
 <section class="view" id="investments" hidden>
   <button class="back-link" onclick="showView('home')">← Back to home</button>
   <div class="page-head"><div><div class="eyebrow">Your portfolio</div><h1>My investments</h1><p>A simple view of your investments, in pounds sterling.</p></div></div>
+  <section class="panel" style="margin-bottom:16px">
+    <h2>Settings</h2>
+    <label for="displayCurrency">Portfolio display currency</label>
+    <select id="displayCurrency" style="width:100%;padding:11px 12px;border-radius:9px;border:1px solid #405168;background:#111B28;color:white">
+      <option value="GBP">GBP · Pounds sterling (£)</option>
+      <option value="USD">USD · US dollars ($)</option>
+      <option value="EUR">EUR · Euros (€)</option>
+    </select>
+    <p class="meta" id="currencyStatus">Portfolio figures are displayed in pounds sterling.</p>
+    <p class="field-hint">Changing this setting changes how Morrow displays portfolio values. It does not change the currency in which an investment trades or the currency of your original records.</p>
+  </section>
   <div class="metrics">
     <div class="metric"><small>Portfolio value</small><div class="value" id="total">£0.00</div></div>
     <div class="metric"><small>Total invested</small><div class="value" id="invested">£0.00</div></div>
@@ -261,8 +272,31 @@ const storageKey="myStockTrackerHoldings";
 let holdings=[];
 try{holdings=JSON.parse(localStorage.getItem(storageKey)||"[]");if(!Array.isArray(holdings))holdings=[];}catch(e){holdings=[];}
 const $=id=>document.getElementById(id);
-const money=n=>new Intl.NumberFormat("en-GB",{style:"currency",currency:"GBP"}).format(n);
+const currencyKey="morrowDisplayCurrency";
+let displayCurrency=localStorage.getItem(currencyKey)||"GBP";
+let displayRate=1;
+const currencyNames={GBP:"pounds sterling",USD:"US dollars",EUR:"euros"};
+const money=n=>new Intl.NumberFormat(displayCurrency==="USD"?"en-US":"en-GB",{style:"currency",currency:displayCurrency}).format((Number(n)||0)*displayRate);
 const number=n=>Number(n)||0;
+async function updateDisplayCurrency(){
+ const status=$("currencyStatus");
+ displayRate=1;
+ if(displayCurrency!=="GBP"){
+  try{
+   const response=await fetch("https://morrow-price-feed.jnkbnfzksg.workers.dev/fx?from=GBP&to="+encodeURIComponent(displayCurrency));
+   if(!response.ok)throw new Error("Exchange-rate service returned HTTP "+response.status);
+   const result=await response.json();
+   if(!Number.isFinite(Number(result.rate))||Number(result.rate)<=0)throw new Error(result.error||"No valid exchange rate was returned.");
+   displayRate=Number(result.rate);
+   status.textContent="1 GBP = "+new Intl.NumberFormat("en-GB",{style:"currency",currency:displayCurrency}).format(displayRate)+" · "+result.provider+" · rate retrieved "+new Date(result.retrievedAt).toLocaleString("en-GB");
+  }catch(error){
+   displayCurrency="GBP";localStorage.setItem(currencyKey,"GBP");$("displayCurrency").value="GBP";
+   status.textContent="Couldn't retrieve the exchange rate, so Morrow has kept your display currency in GBP. "+error.message;
+  }
+ }else status.textContent="Portfolio figures are displayed in pounds sterling.";
+ render();
+ if(activeJourney)openJourney(activeJourney.id);
+}
 function showView(id){
  document.querySelectorAll(".view").forEach(v=>v.hidden=v.id!==id);
  document.querySelectorAll(".nav button").forEach(b=>b.classList.toggle("active",b.dataset.view===id));
@@ -439,7 +473,9 @@ $("calculateButton").addEventListener("click",calculateProjection);
 
 $("resetCalc").addEventListener("click",()=>{$("starting").value=1000;$("monthly").value=100;$("returnRate").value=5;$("years").value=20;calculateProjection();});
 let resizeTimer;window.addEventListener("resize",()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>{if(!$("future").hidden&&projectionPoints.length)drawChart(projectionPoints);if(!$("journey").hidden){drawHistoryChart(historyData);if(activeJourney)calculateJourneyScenarios();}},120);});
-render();calculateProjection();refreshPortfolioPrices();
+$("displayCurrency").value=displayCurrency;
+$("displayCurrency").addEventListener("change",e=>{displayCurrency=e.target.value;localStorage.setItem(currencyKey,displayCurrency);updateDisplayCurrency();});
+render();calculateProjection();updateDisplayCurrency();refreshPortfolioPrices();
 setInterval(refreshPortfolioPrices,6*60*60*1000);
 </script>
 </body>
