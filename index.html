@@ -1,0 +1,215 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My Stock Portfolio</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;padding:24px;background:#101722;color:#edf2f7;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+main{max-width:850px;margin:auto}
+h1{font-size:28px;margin-bottom:6px}
+.sub{color:#9ba9ba;margin-top:0}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:24px 0}
+.card,.panel{background:#1b2736;border:1px solid #304052;border-radius:14px;padding:18px}
+.card small{color:#aab7c6}
+.value{font-size:22px;font-weight:700;margin-top:8px}
+.panel{margin:16px 0}
+h2{font-size:18px;margin-top:0}
+label{display:block;color:#bdc8d5;font-size:13px;margin:12px 0 5px}
+input,textarea{width:100%;padding:11px;border-radius:8px;border:1px solid #405168;background:#111b28;color:white;font:inherit}
+button{border:0;border-radius:8px;padding:11px 15px;background:#4c8df6;color:white;font-weight:600;cursor:pointer;margin:12px 6px 0 0}
+button.secondary{background:#34465d}
+button.danger{background:#9b4149}
+.holding{border-top:1px solid #34465d;padding:15px 0}
+.holding:first-child{border-top:0}
+.holding strong{font-size:17px}
+.meta{color:#aab7c6;font-size:13px;margin-top:5px}
+.positive{color:#62d69a}.negative{color:#ff8585}
+.actions button{font-size:12px;padding:7px 10px}
+.empty{color:#aab7c6}
+@media(max-width:600px){body{padding:15px}.cards{grid-template-columns:1fr}.value{font-size:20px}}
+</style>
+</head>
+<body>
+<main>
+<h1>My Stock Portfolio</h1>
+<p class="sub">A simple overview of your investments, in pounds sterling.</p>
+
+<div class="cards">
+ <div class="card"><small>Portfolio value</small><div class="value" id="total">£0.00</div></div>
+ <div class="card"><small>Total invested</small><div class="value" id="invested">£0.00</div></div>
+ <div class="card"><small>Unrealised gain / loss</small><div class="value" id="profit">£0.00</div><div id="percent" class="meta">0.00%</div></div>
+</div>
+
+<section class="panel">
+<h2 id="formTitle">Add a holding</h2>
+<form id="holdingForm">
+<input type="hidden" id="editId">
+<label for="ticker">Ticker / share symbol</label>
+<input id="ticker" placeholder="e.g. VUAG" required>
+<label for="name">Investment name</label>
+<input id="name" placeholder="e.g. Vanguard S&P 500 ETF" required>
+<label for="units">Number of shares / units</label>
+<input id="units" type="number" min="0" step="any" placeholder="e.g. 25" required>
+<label for="buy">Average purchase price per unit (£)</label>
+<input id="buy" type="number" min="0" step="any" placeholder="e.g. 85.50" required>
+<label for="price">Latest price per unit (£)</label>
+<input id="price" type="number" min="0" step="any" placeholder="e.g. 92.10" required>
+<label for="quoteDate">Date of latest price</label>
+<input id="quoteDate" type="date">
+<label for="notes">Notes (optional)</label>
+<textarea id="notes" rows="2" placeholder="Account, investment notes..."></textarea>
+<button type="submit" id="saveButton">Add holding</button>
+<button type="button" class="secondary" id="cancelButton" hidden>Cancel edit</button>
+</form>
+</section>
+
+<section class="panel">
+<h2>Your investments</h2>
+<div id="holdings"><p class="empty">No holdings added yet. Add your first investment above.</p></div>
+</section>
+
+<section class="panel">
+<h2>Backup your portfolio</h2>
+<p class="meta">Your holdings are saved in this browser on this device. Export a backup regularly so you can restore them if needed.</p>
+<button id="exportButton">Export backup</button>
+<label for="importFile">Restore from backup</label>
+<input id="importFile" type="file" accept=".json,application/json">
+</section>
+<p class="meta">Prices are entered manually in this version. This tracker does not connect to a live market feed or provide investment advice.</p>
+</main>
+
+<script>
+const storageKey = "myStockTrackerHoldings";
+let holdings = [];
+try {
+  holdings = JSON.parse(localStorage.getItem(storageKey) || "[]");
+  if (!Array.isArray(holdings)) holdings = [];
+} catch(e) { holdings = []; }
+
+const $ = id => document.getElementById(id);
+const money = n => new Intl.NumberFormat("en-GB",{style:"currency",currency:"GBP"}).format(n);
+const number = n => Number(n) || 0;
+
+function save() {
+  localStorage.setItem(storageKey, JSON.stringify(holdings));
+  render();
+}
+
+function render() {
+  const invested = holdings.reduce((s,h)=>s+h.units*h.buy,0);
+  const total = holdings.reduce((s,h)=>s+h.units*h.price,0);
+  const profit = total-invested;
+  $("total").textContent = money(total);
+  $("invested").textContent = money(invested);
+  $("profit").textContent = money(profit);
+  $("profit").className = "value " + (profit>=0?"positive":"negative");
+  const pct = invested ? profit/invested*100 : 0;
+  $("percent").textContent = pct.toFixed(2)+"% return";
+  $("percent").className = "meta "+(profit>=0?"positive":"negative");
+
+  if (!holdings.length) {
+    $("holdings").innerHTML = '<p class="empty">No holdings added yet. Add your first investment above.</p>';
+    return;
+  }
+
+  $("holdings").innerHTML = holdings.map(h => {
+    const cost=h.units*h.buy, value=h.units*h.price, gain=value-cost;
+    const cls=gain>=0?"positive":"negative";
+    return `<div class="holding">
+      <strong>${escapeHTML(h.name)}</strong> <span class="meta">(${escapeHTML(h.ticker)})</span>
+      <div class="meta">${h.units} units · Average buy ${money(h.buy)} · Latest ${money(h.price)}</div>
+      <div class="meta">Holding value: <strong>${money(value)}</strong></div>
+      <div class="${cls}">${money(gain)} (${cost ? (gain/cost*100).toFixed(2) : "0.00"}%)</div>
+      <div class="meta">Price date: ${escapeHTML(h.quoteDate || "Not entered")}${h.notes ? " · "+escapeHTML(h.notes):""}</div>
+      <div class="actions">
+        <button class="secondary" onclick="editHolding('${h.id}')">Edit</button>
+        <button class="danger" onclick="deleteHolding('${h.id}')">Remove</button>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function escapeHTML(s) {
+  return String(s ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+$("holdingForm").addEventListener("submit",e=>{
+  e.preventDefault();
+  const id=$("editId").value || (Date.now().toString()+Math.random().toString(16).slice(2));
+  const item={
+    id,
+    ticker:$("ticker").value.trim().toUpperCase(),
+    name:$("name").value.trim(),
+    units:number($("units").value),
+    buy:number($("buy").value),
+    price:number($("price").value),
+    quoteDate:$("quoteDate").value,
+    notes:$("notes").value.trim()
+  };
+  const index=holdings.findIndex(h=>h.id===id);
+  if(index>=0) holdings[index]=item; else holdings.push(item);
+  resetForm();
+  save();
+});
+
+function editHolding(id) {
+  const h=holdings.find(x=>x.id===id);
+  if(!h) return;
+  $("editId").value=h.id;
+  $("ticker").value=h.ticker;
+  $("name").value=h.name;
+  $("units").value=h.units;
+  $("buy").value=h.buy;
+  $("price").value=h.price;
+  $("quoteDate").value=h.quoteDate || "";
+  $("notes").value=h.notes || "";
+  $("formTitle").textContent="Edit holding";
+  $("saveButton").textContent="Save changes";
+  $("cancelButton").hidden=false;
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+function deleteHolding(id) {
+  if(!confirm("Remove this holding from your tracker?")) return;
+  holdings=holdings.filter(h=>h.id!==id);
+  save();
+}
+
+function resetForm() {
+  $("holdingForm").reset();
+  $("editId").value="";
+  $("formTitle").textContent="Add a holding";
+  $("saveButton").textContent="Add holding";
+  $("cancelButton").hidden=true;
+}
+$("cancelButton").addEventListener("click",resetForm);
+
+$("exportButton").addEventListener("click",()=>{
+  const blob=new Blob([JSON.stringify(holdings,null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;a.download="my-stock-portfolio-backup.json";a.click();
+  URL.revokeObjectURL(url);
+});
+
+$("importFile").addEventListener("change",async e=>{
+  const file=e.target.files[0];
+  if(!file) return;
+  try {
+    const data=JSON.parse(await file.text());
+    if(!Array.isArray(data) || !data.every(h=>h.ticker && Number.isFinite(Number(h.units)) && Number.isFinite(Number(h.buy)) && Number.isFinite(Number(h.price)))) throw new Error();
+    if(!confirm("Replace your current holdings with this backup?")) return;
+    holdings=data.map(h=>({...h,id:String(h.id || Date.now()+Math.random())}));
+    save();
+    alert("Backup restored.");
+  } catch(err) { alert("That backup file doesn't look valid."); }
+  e.target.value="";
+});
+
+render();
+</script>
+</body>
+</html>
