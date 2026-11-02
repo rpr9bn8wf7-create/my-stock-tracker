@@ -1,258 +1,315 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>My Stock Portfolio</title>
+<meta name="theme-color" content="#111B2B">
+<title>Morrow — Your money. Tomorrow, explained.</title>
 <style>
+:root{--bg:#111B2B;--surface:#1D2A3D;--surface2:#263448;--line:#344155;--text:#F5F6F8;--muted:#AAB5C5;--orange:#F28C28;--green:#71D6A0;--red:#FF8585}
 *{box-sizing:border-box}
-body{margin:0;padding:24px;background:#101722;color:#edf2f7;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-main{max-width:850px;margin:auto}
-h1{font-size:28px;margin-bottom:6px}
-.sub{color:#9ba9ba;margin-top:0}
-.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:24px 0}
-.card,.panel{background:#1b2736;border:1px solid #304052;border-radius:14px;padding:18px}
-.card small{color:#aab7c6}
-.value{font-size:22px;font-weight:700;margin-top:8px}
-.panel{margin:16px 0}
-h2{font-size:18px;margin-top:0}
-label{display:block;color:#bdc8d5;font-size:13px;margin:12px 0 5px}
-input,textarea{width:100%;padding:11px;border-radius:8px;border:1px solid #405168;background:#111b28;color:white;font:inherit}
-button{border:0;border-radius:8px;padding:11px 15px;background:#4c8df6;color:white;font-weight:600;cursor:pointer;margin:12px 6px 0 0}
-button.secondary{background:#34465d}
-button.danger{background:#9b4149}
-.holding{border-top:1px solid #34465d;padding:15px 0}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.5}
+button,input,textarea{font:inherit}
+button{cursor:pointer}
+.shell{max-width:980px;margin:auto;padding:22px 22px 48px}
+header{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:8px 0 22px;border-bottom:1px solid var(--line)}
+.brand{font-size:29px;font-weight:750;letter-spacing:-1.5px;color:var(--text);text-decoration:none}
+.brand span{color:var(--orange)}
+.tagline{font-size:11px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase}
+.nav{display:flex;gap:7px;flex-wrap:wrap}
+.nav button,.quiet-button{border:1px solid transparent;background:transparent;color:var(--muted);padding:9px 12px;border-radius:9px;font-size:13px}
+.nav button:hover,.nav button.active{background:var(--surface2);color:var(--text);border-color:var(--line)}
+.nav button.active{box-shadow:inset 0 -2px var(--orange)}
+main{padding-top:28px}
+.view[hidden]{display:none}
+.eyebrow{color:var(--orange);font-size:11px;font-weight:750;letter-spacing:1.8px;text-transform:uppercase}
+h1{font-size:clamp(30px,5vw,43px);letter-spacing:-1.5px;line-height:1.12;margin:8px 0 10px}
+h2{font-size:19px;letter-spacing:-.3px;margin:0 0 14px}
+h3{font-size:15px;margin:0 0 8px}
+p{margin:0}
+.intro{color:var(--muted);max-width:610px}
+.home-hero{padding:24px 0 28px}
+.home-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:25px}
+.destination{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:21px;min-height:190px;display:flex;flex-direction:column;align-items:flex-start;text-align:left;color:var(--text);transition:transform .18s,border-color .18s}
+.destination:hover{transform:translateY(-3px);border-color:var(--orange)}
+.destination .symbol{width:43px;height:43px;border-radius:12px;background:var(--surface2);display:grid;place-items:center;color:var(--orange);font-size:21px;margin-bottom:18px}
+.destination strong{font-size:16px}
+.destination small{color:var(--muted);font-size:13px;margin-top:7px}
+.destination .go{color:var(--orange);margin-top:auto;padding-top:15px;font-size:13px;font-weight:700}
+.note{margin-top:20px;padding:17px 19px;background:#192638;border:1px solid var(--line);border-radius:13px;color:var(--muted);font-size:13px}
+.note strong{color:var(--text)}
+.page-head{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;margin-bottom:22px}
+.page-head p{color:var(--muted);font-size:14px}
+.panel,.metric{background:var(--surface);border:1px solid var(--line);border-radius:15px;padding:19px}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0}
+.metric small{display:block;color:var(--muted);font-size:12px}
+.metric .value{font-size:clamp(19px,3vw,25px);font-weight:750;margin-top:6px;letter-spacing:-.5px}
+.positive{color:var(--green)}.negative{color:var(--red)}
+label{display:block;color:#CBD4DF;font-size:12px;margin:13px 0 6px}
+input,textarea{width:100%;padding:11px 12px;border-radius:9px;border:1px solid #405168;background:#111B28;color:white;outline:none}
+input:focus,textarea:focus{border-color:var(--orange);box-shadow:0 0 0 2px #F28C2825}
+input::placeholder,textarea::placeholder{color:#78889C}
+button.primary{border:0;border-radius:9px;padding:11px 16px;background:var(--orange);color:#21180F;font-weight:750}
+button.primary:hover{filter:brightness(1.07)}
+button.secondary{border:1px solid var(--line);border-radius:9px;padding:10px 14px;background:var(--surface2);color:var(--text);font-weight:600}
+button.danger{background:#713D48;color:white;border:0;border-radius:8px;padding:7px 10px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.holding{border-top:1px solid var(--line);padding:16px 0}
 .holding:first-child{border-top:0}
-.holding strong{font-size:17px}
-.meta{color:#aab7c6;font-size:13px;margin-top:5px}
-.positive{color:#62d69a}.negative{color:#ff8585}
-.actions button{font-size:12px;padding:7px 10px}
-.empty{color:#aab7c6}
-.quote-status{font-size:13px;color:#aab7c6;margin-top:10px;min-height:18px}
-.source{color:#8fb8ff}
-@media(max-width:600px){body{padding:15px}.cards{grid-template-columns:1fr}.value{font-size:20px}}
+.meta{color:var(--muted);font-size:12px;margin-top:5px}
+.quote-status{font-size:13px;color:var(--muted);margin:10px 0;min-height:18px}
+.source{color:#F5B66F}
+.empty{color:var(--muted);font-size:14px}
+.calculator-layout{display:grid;grid-template-columns:minmax(0, .9fr) minmax(0,1.1fr);gap:15px;align-items:start}
+.field-hint{font-size:11px;color:var(--muted);margin-top:5px}
+.result-hero{background:linear-gradient(135deg,#263A50,#1D2A3D);border:1px solid #46566B;border-radius:15px;padding:21px;margin-bottom:13px}
+.result-hero small{color:#C1CBD7}
+.result-amount{font-size:clamp(29px,5vw,39px);font-weight:780;letter-spacing:-1.2px;margin:5px 0;color:white}
+.result-sub{font-size:12px;color:#C1CBD7}
+.result-split{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.result-split .metric{padding:14px}
+.result-split .value{font-size:19px}
+.chart-wrap{margin-top:14px}
+canvas{display:block;width:100%;height:230px}
+.chart-legend{display:flex;gap:18px;flex-wrap:wrap;color:var(--muted);font-size:11px;margin-top:8px}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:var(--orange)}
+.dot.grey{background:#72839A}
+.disclaimer{font-size:11px;color:var(--muted);margin-top:16px;line-height:1.55}
+.back-link{color:var(--orange);background:none;border:0;padding:0;font-size:13px;margin-bottom:18px}
+.footer{border-top:1px solid var(--line);margin-top:38px;padding-top:17px;text-align:center;color:#8291A4;font-size:11px}
+@media(max-width:700px){.shell{padding:15px 15px 35px}.home-grid{grid-template-columns:1fr}.destination{min-height:145px}.calculator-layout{grid-template-columns:1fr}.metrics{grid-template-columns:1fr}.page-head{align-items:flex-start;flex-direction:column}.nav{width:100%;display:grid;grid-template-columns:repeat(3,1fr)}.nav button{padding:8px 5px;font-size:12px}.tagline{display:none}}
+@media(min-width:701px) and (max-width:850px){.home-grid{grid-template-columns:1fr 1fr}}
 </style>
 </head>
 <body>
+<div class="shell">
+<header>
+  <a class="brand" href="#" onclick="showView('home');return false" aria-label="Morrow home">morrow<span>.</span></a>
+  <nav class="nav" aria-label="Main navigation">
+    <button data-view="investments" onclick="showView('investments')">Investments</button>
+    <button data-view="briefing" onclick="showView('briefing')">Daily briefing</button>
+    <button data-view="future" onclick="showView('future')">Financial future</button>
+  </nav>
+</header>
 <main>
-<h1>My Stock Portfolio</h1>
-<p class="sub">A simple overview of your investments, in pounds sterling.</p>
-
-<div class="cards">
- <div class="card"><small>Portfolio value</small><div class="value" id="total">£0.00</div></div>
- <div class="card"><small>Total invested</small><div class="value" id="invested">£0.00</div></div>
- <div class="card"><small>Unrealised gain / loss</small><div class="value" id="profit">£0.00</div><div id="percent" class="meta">0.00%</div></div>
-</div>
-
-<section class="panel">
-<h2 id="formTitle">Add a holding</h2>
-<form id="holdingForm">
-<input type="hidden" id="editId">
-<label for="ticker">Ticker / share symbol</label>
-<input id="ticker" placeholder="e.g. VUAG" required>
-<label for="name">Investment name</label>
-<input id="name" placeholder="e.g. Vanguard S&P 500 ETF" required>
-<label for="units">Number of shares / units</label>
-<input id="units" type="number" min="0" step="any" placeholder="e.g. 25" required>
-<label for="buy">Average purchase price per unit (£)</label>
-<input id="buy" type="number" min="0" step="any" placeholder="e.g. 85.50" required>
-<label for="price">Latest price per unit (£)</label>
-<input id="price" type="number" min="0" step="any" placeholder="e.g. 92.10" required>
-<label for="quoteDate">Date of latest price</label>
-<input id="quoteDate" type="date">
-<label for="notes">Notes (optional)</label>
-<textarea id="notes" rows="2" placeholder="Account, investment notes..."></textarea>
-<button type="submit" id="saveButton">Add holding</button>
-<button type="button" class="secondary" id="cancelButton" hidden>Cancel edit</button>
-</form>
+<section class="view" id="home">
+  <div class="home-hero">
+    <div class="eyebrow">Your financial companion</div>
+    <h1>Your money.<br>Tomorrow, explained.</h1>
+    <p class="intro">A clearer view of where you are, what's happening and where your money could take you. You're in the driving seat. Morrow helps you see the road ahead.</p>
+  </div>
+  <div class="home-grid">
+    <button class="destination" onclick="showView('investments')">
+      <span class="symbol" aria-hidden="true">↗</span>
+      <strong>Explore my investments</strong>
+      <small>See what your investments are worth and how they're performing.</small>
+      <span class="go">View investments →</span>
+    </button>
+    <button class="destination" onclick="showView('briefing')">
+      <span class="symbol" aria-hidden="true">☼</span>
+      <strong>Read my daily briefing</strong>
+      <small>Make sense of the news and what it could mean for your investments.</small>
+      <span class="go">Open briefing →</span>
+    </button>
+    <button class="destination" onclick="showView('future')">
+      <span class="symbol" aria-hidden="true">⌁</span>
+      <strong>Plan my financial future</strong>
+      <small>Explore what regular investing might grow into over time.</small>
+      <span class="go">Explore possibilities →</span>
+    </button>
+  </div>
+  <div class="note"><strong>A little progress goes a long way.</strong> You don't need to know everything about investing to make informed choices. Start with what matters to you, and take it one step at a time.</div>
 </section>
 
-<section class="panel">
-<h2>Your investments</h2>
-<button type="button" id="refreshButton">Refresh VUAG price</button>
-<div id="quoteStatus" class="quote-status">VUAG prices can be refreshed using the end-of-day feed.</div>
-<div id="holdings"><p class="empty">No holdings added yet. Add your first investment above.</p></div>
-</section>
-
-<section class="panel">
-<h2>Backup your portfolio</h2>
-<p class="meta">Your holdings are saved in this browser on this device. Export a backup regularly so you can restore them if needed.</p>
-<button id="exportButton">Export backup</button>
-<label for="importFile">Restore from backup</label>
-<input id="importFile" type="file" accept=".json,application/json">
-</section>
-<p class="meta">VUAG uses an end-of-day reference price from Newton Analytics when refreshed. Other holdings can still be updated manually. Prices are informational only, not investment advice.</p>
-</main>
-
-<script>
-const storageKey = "myStockTrackerHoldings";
-let holdings = [];
-try {
-  holdings = JSON.parse(localStorage.getItem(storageKey) || "[]");
-  if (!Array.isArray(holdings)) holdings = [];
-} catch(e) { holdings = []; }
-
-const $ = id => document.getElementById(id);
-const money = n => new Intl.NumberFormat("en-GB",{style:"currency",currency:"GBP"}).format(n);
-const number = n => Number(n) || 0;
-
-function save() {
-  localStorage.setItem(storageKey, JSON.stringify(holdings));
-  render();
-}
-
-function render() {
-  const invested = holdings.reduce((s,h)=>s+h.units*h.buy,0);
-  const total = holdings.reduce((s,h)=>s+h.units*h.price,0);
-  const profit = total-invested;
-  $("total").textContent = money(total);
-  $("invested").textContent = money(invested);
-  $("profit").textContent = money(profit);
-  $("profit").className = "value " + (profit>=0?"positive":"negative");
-  const pct = invested ? profit/invested*100 : 0;
-  $("percent").textContent = pct.toFixed(2)+"% return";
-  $("percent").className = "meta "+(profit>=0?"positive":"negative");
-
-  if (!holdings.length) {
-    $("holdings").innerHTML = '<p class="empty">No holdings added yet. Add your first investment above.</p>';
-    return;
-  }
-
-  $("holdings").innerHTML = holdings.map(h => {
-    const cost=h.units*h.buy, value=h.units*h.price, gain=value-cost;
-    const cls=gain>=0?"positive":"negative";
-    return `<div class="holding">
-      <strong>${escapeHTML(h.name)}</strong> <span class="meta">(${escapeHTML(h.ticker)})</span>
-      <div class="meta">${h.units} units · Average buy ${money(h.buy)} · Latest ${money(h.price)}</div>
-      <div class="meta">Holding value: <strong>${money(value)}</strong></div>
-      <div class="meta">${h.quoteSource ? `<span class="source">${escapeHTML(h.quoteSource)}</span>` : "Price entered manually"}</div>
-      <div class="${cls}">${money(gain)} (${cost ? (gain/cost*100).toFixed(2) : "0.00"}%)</div>
-      <div class="meta">Price date: ${escapeHTML(h.quoteDate || "Not entered")}${h.notes ? " · "+escapeHTML(h.notes):""}</div>
-      <div class="actions">
-        <button class="secondary" onclick="editHolding('${h.id}')">Edit</button>
-        <button class="danger" onclick="deleteHolding('${h.id}')">Remove</button>
+<section class="view" id="investments" hidden>
+  <button class="back-link" onclick="showView('home')">← Back to home</button>
+  <div class="page-head"><div><div class="eyebrow">Your portfolio</div><h1>My investments</h1><p>A simple view of your investments, in pounds sterling.</p></div></div>
+  <div class="metrics">
+    <div class="metric"><small>Portfolio value</small><div class="value" id="total">£0.00</div></div>
+    <div class="metric"><small>Total invested</small><div class="value" id="invested">£0.00</div></div>
+    <div class="metric"><small>Gain / loss</small><div class="value" id="profit">£0.00</div><div id="percent" class="meta">0.00%</div></div>
+  </div>
+  <section class="panel">
+    <h2 id="formTitle">Add an investment</h2>
+    <form id="holdingForm">
+      <input type="hidden" id="editId">
+      <div class="form-grid">
+        <div><label for="ticker">Ticker / share symbol</label><input id="ticker" placeholder="e.g. VUAG" required></div>
+        <div><label for="name">Investment name</label><input id="name" placeholder="e.g. Vanguard S&P 500 ETF" required></div>
+        <div><label for="units">Number of shares / units</label><input id="units" type="number" min="0" step="any" placeholder="e.g. 25" required></div>
+        <div><label for="buy">Average purchase price per unit (£)</label><input id="buy" type="number" min="0" step="any" placeholder="e.g. 85.50" required></div>
+        <div><label for="price">Latest price per unit (£)</label><input id="price" type="number" min="0" step="any" placeholder="e.g. 92.10" required></div>
+        <div><label for="quoteDate">Date of latest price</label><input id="quoteDate" type="date"></div>
       </div>
-    </div>`;
-  }).join("");
+      <label for="notes">Notes (optional)</label><textarea id="notes" rows="2" placeholder="Account, investment notes..."></textarea>
+      <div class="actions"><button type="submit" class="primary" id="saveButton">Add investment</button><button type="button" class="secondary" id="cancelButton" hidden>Cancel edit</button></div>
+    </form>
+  </section>
+  <section class="panel">
+    <h2>Your holdings</h2>
+    <button type="button" class="secondary" id="refreshButton">Refresh VUAG price</button>
+    <div id="quoteStatus" class="quote-status">VUAG prices can be refreshed using the end-of-day feed.</div>
+    <div id="holdings"><p class="empty">No investments added yet. Add your first investment above.</p></div>
+  </section>
+  <section class="panel">
+    <h2>Keep a backup</h2>
+    <p class="meta">Your holdings are saved in this browser on this device. Export a backup regularly so you can restore them if needed.</p>
+    <div class="actions"><button id="exportButton" class="secondary">Export backup</button></div>
+    <label for="importFile">Restore from backup</label><input id="importFile" type="file" accept=".json,application/json">
+  </section>
+  <p class="disclaimer">VUAG uses an end-of-day reference price from Newton Analytics when refreshed. Other holdings can be updated manually. Prices are informational only, not investment advice.</p>
+</section>
+
+<section class="view" id="briefing" hidden>
+  <button class="back-link" onclick="showView('home')">← Back to home</button>
+  <div class="eyebrow">A clearer view of the day</div><h1>Daily briefing</h1>
+  <div class="panel"><h2>Your morning briefing is taking shape.</h2><p class="intro">This is where Morrow will bring together the market news that matters to your investments, explain what's moving and help separate meaningful developments from everyday market noise.</p><div class="note"><strong>Coming next:</strong> personalised stories, plain-English explanations and a simple view of why they may matter to your portfolio.</div></div>
+</section>
+
+<section class="view" id="future" hidden>
+  <button class="back-link" onclick="showView('home')">← Back to home</button>
+  <div class="eyebrow">Look a little further ahead</div><h1>Financial future</h1>
+  <p class="intro" style="margin-bottom:22px">Small steps can add up. Try a few numbers and explore what your investments might become over time.</p>
+  <div class="calculator-layout">
+    <section class="panel">
+      <h2>Set your journey</h2>
+      <label for="starting">Your starting amount (£)</label><input id="starting" type="number" min="0" max="100000000" step="100" value="1000">
+      <div class="field-hint">The amount you have already invested, or plan to start with.</div>
+      <label for="monthly">Your monthly contribution (£)</label><input id="monthly" type="number" min="0" max="1000000" step="10" value="100">
+      <div class="field-hint">What you could comfortably add each month.</div>
+      <label for="returnRate">Illustrative annual growth (%)</label><input id="returnRate" type="number" min="0" max="30" step="0.1" value="5">
+      <div class="field-hint">An assumption to explore, not a prediction or promise.</div>
+      <label for="years">How far ahead? (years)</label><input id="years" type="number" min="1" max="60" step="1" value="20">
+      <div class="field-hint">Try changing the time horizon to see the difference.</div>
+      <div class="actions"><button class="primary" type="button" id="calculateButton">Show my projection</button><button class="secondary" type="button" id="resetCalc">Start again</button></div>
+    </section>
+    <section>
+      <div class="result-hero">
+        <small>Your possible future value</small>
+        <div class="result-amount" id="futureValue">£0</div>
+        <div class="result-sub" id="futureSummary">A projection based on the assumptions you've entered.</div>
+      </div>
+      <div class="result-split">
+        <div class="metric"><small>Your contributions</small><div class="value" id="contributed">£0</div></div>
+        <div class="metric"><small>Potential growth</small><div class="value positive" id="growth">£0</div></div>
+      </div>
+      <div class="panel chart-wrap">
+        <h3>Your journey over time</h3>
+        <canvas id="growthChart" role="img" aria-label="Chart comparing your contributions with projected investment value over time"></canvas>
+        <div class="chart-legend"><span><i class="dot grey"></i>Money you put in</span><span><i class="dot"></i>Projected value</span></div>
+      </div>
+    </section>
+  </div>
+  <p class="disclaimer">This calculator is for illustration and education, not financial advice. It assumes a steady annual growth rate, compounded monthly, with contributions made at the end of each month. Real investment returns vary and can be negative. It does not include fees, taxes, inflation or changes in contribution amounts. You could get back less than you invest.</p>
+</section>
+</main>
+<div class="footer">morrow<span style="color:var(--orange)">.</span> &nbsp; YOUR MONEY. TOMORROW, EXPLAINED.</div>
+</div>
+<script>
+const storageKey="myStockTrackerHoldings";
+let holdings=[];
+try{holdings=JSON.parse(localStorage.getItem(storageKey)||"[]");if(!Array.isArray(holdings))holdings=[];}catch(e){holdings=[];}
+const $=id=>document.getElementById(id);
+const money=n=>new Intl.NumberFormat("en-GB",{style:"currency",currency:"GBP"}).format(n);
+const number=n=>Number(n)||0;
+function showView(id){
+ document.querySelectorAll(".view").forEach(v=>v.hidden=v.id!==id);
+ document.querySelectorAll(".nav button").forEach(b=>b.classList.toggle("active",b.dataset.view===id));
+ window.scrollTo({top:0,behavior:"smooth"});
+ if(id==="future")calculateProjection();
 }
-
-
-async function refreshVUAGPrice() {
-  const button = $("refreshButton");
-  const status = $("quoteStatus");
-  const matches = holdings.filter(h => String(h.ticker).toUpperCase() === "VUAG");
-  if (!matches.length) {
-    status.textContent = "Add a holding with ticker VUAG first.";
-    return;
-  }
-  button.disabled = true;
-  button.textContent = "Refreshing…";
-  status.textContent = "Retrieving the latest available daily closing price…";
-  try {
-    const response = await fetch("https://morrow-price-feed.jnkbnfzksg.workers.dev/vuag");
-    if (!response.ok) throw new Error("Price service returned HTTP " + response.status);
-    const result = await response.json();
-    if (result.status !== "200" || !Array.isArray(result.data) || !result.data.length || !Number.isFinite(Number(result.data[0][1]))) {
-      throw new Error(result.statusMessage || "No price was returned.");
-    }
-    const timestamp = Number(result.data[0][0]);
-    const price = Number(result.data[0][1]);
-    const date = new Date(timestamp * 1000).toISOString().slice(0, 10);
-    matches.forEach(h => {
-      h.price = price;
-      h.quoteDate = date;
-      h.quoteSource = "Newton Analytics · end-of-day";
-    });
-    save();
-    status.textContent = "VUAG updated to " + money(price) + " per unit · daily price dated " + date + ".";
-  } catch (error) {
-    status.textContent = "Couldn't refresh VUAG: " + error.message + " Your saved prices haven't been changed.";
-  } finally {
-    button.disabled = false;
-    button.textContent = "Refresh VUAG price";
-  }
+function save(){localStorage.setItem(storageKey,JSON.stringify(holdings));render();}
+function escapeHTML(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function render(){
+ const invested=holdings.reduce((s,h)=>s+h.units*h.buy,0),total=holdings.reduce((s,h)=>s+h.units*h.price,0),profit=total-invested;
+ $("total").textContent=money(total);$("invested").textContent=money(invested);$("profit").textContent=money(profit);
+ $("profit").className="value "+(profit>=0?"positive":"negative");
+ $("percent").textContent=(invested?profit/invested*100:0).toFixed(2)+"% overall";
+ $("percent").className="meta "+(profit>=0?"positive":"negative");
+ if(!holdings.length){$("holdings").innerHTML='<p class="empty">No investments added yet. Add your first investment above.</p>';return;}
+ $("holdings").innerHTML=holdings.map(h=>{
+  const cost=h.units*h.buy,value=h.units*h.price,gain=value-cost,cls=gain>=0?"positive":"negative";
+  return '<div class="holding"><strong>'+escapeHTML(h.name)+'</strong> <span class="meta">('+escapeHTML(h.ticker)+')</span>'+
+  '<div class="meta">'+h.units+' units · Average buy '+money(h.buy)+' · Latest '+money(h.price)+'</div>'+
+  '<div class="meta">Holding value: <strong>'+money(value)+'</strong></div>'+
+  '<div class="meta">'+(h.quoteSource?'<span class="source">'+escapeHTML(h.quoteSource)+'</span>':"Price entered manually")+'</div>'+
+  '<div class="'+cls+'">'+money(gain)+' ('+(cost?(gain/cost*100).toFixed(2):"0.00")+'%)</div>'+
+  '<div class="meta">Price date: '+escapeHTML(h.quoteDate||"Not entered")+(h.notes?" · "+escapeHTML(h.notes):"")+'</div>'+
+  '<div class="actions"><button class="secondary" onclick="editHolding(\''+String(h.id).replace(/'/g,"\\'")+'\')">Edit</button><button class="danger" onclick="deleteHolding(\''+String(h.id).replace(/'/g,"\\'")+'\')">Remove</button></div></div>';
+ }).join("");
 }
-$("refreshButton").addEventListener("click", refreshVUAGPrice);
-
-function escapeHTML(s) {
-  return String(s ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+async function refreshVUAGPrice(){
+ const button=$("refreshButton"),status=$("quoteStatus"),matches=holdings.filter(h=>String(h.ticker).toUpperCase()==="VUAG");
+ if(!matches.length){status.textContent="Add a holding with ticker VUAG first.";return;}
+ button.disabled=true;button.textContent="Refreshing…";status.textContent="Retrieving the latest available daily closing price…";
+ try{
+  const response=await fetch("https://morrow-price-feed.jnkbnfzksg.workers.dev/vuag");if(!response.ok)throw new Error("Price service returned HTTP "+response.status);
+  const result=await response.json();if(result.status!=="200"||!Array.isArray(result.data)||!result.data.length||!Number.isFinite(Number(result.data[0][1])))throw new Error(result.statusMessage||"No price was returned.");
+  const price=Number(result.data[0][1]),date=new Date(Number(result.data[0][0])*1000).toISOString().slice(0,10);
+  matches.forEach(h=>{h.price=price;h.quoteDate=date;h.quoteSource="Newton Analytics · end-of-day";});save();
+  status.textContent="VUAG updated to "+money(price)+" per unit · daily price dated "+date+".";
+ }catch(error){status.textContent="Couldn't refresh VUAG: "+error.message+" Your saved prices haven't been changed.";}
+ finally{button.disabled=false;button.textContent="Refresh VUAG price";}
 }
-
+$("refreshButton").addEventListener("click",refreshVUAGPrice);
 $("holdingForm").addEventListener("submit",e=>{
-  e.preventDefault();
-  const id=$("editId").value || (Date.now().toString()+Math.random().toString(16).slice(2));
-  const item={
-    id,
-    ticker:$("ticker").value.trim().toUpperCase(),
-    name:$("name").value.trim(),
-    units:number($("units").value),
-    buy:number($("buy").value),
-    price:number($("price").value),
-    quoteDate:$("quoteDate").value,
-    notes:$("notes").value.trim()
-  };
-  const index=holdings.findIndex(h=>h.id===id);
-  if(index>=0) holdings[index]=item; else holdings.push(item);
-  resetForm();
-  save();
+ e.preventDefault();const id=$("editId").value||(Date.now().toString()+Math.random().toString(16).slice(2));
+ const item={id,ticker:$("ticker").value.trim().toUpperCase(),name:$("name").value.trim(),units:number($("units").value),buy:number($("buy").value),price:number($("price").value),quoteDate:$("quoteDate").value,notes:$("notes").value.trim()};
+ const index=holdings.findIndex(h=>h.id===id);if(index>=0){item.quoteSource=holdings[index].quoteSource;holdings[index]=item;}else holdings.push(item);
+ resetForm();save();
 });
-
-function editHolding(id) {
-  const h=holdings.find(x=>x.id===id);
-  if(!h) return;
-  $("editId").value=h.id;
-  $("ticker").value=h.ticker;
-  $("name").value=h.name;
-  $("units").value=h.units;
-  $("buy").value=h.buy;
-  $("price").value=h.price;
-  $("quoteDate").value=h.quoteDate || "";
-  $("notes").value=h.notes || "";
-  $("formTitle").textContent="Edit holding";
-  $("saveButton").textContent="Save changes";
-  $("cancelButton").hidden=false;
-  window.scrollTo({top:0,behavior:"smooth"});
+function editHolding(id){
+ const h=holdings.find(x=>x.id===id);if(!h)return;
+ $("editId").value=h.id;["ticker","name","units","buy","price","quoteDate","notes"].forEach(k=>$(k).value=h[k]??"");
+ $("formTitle").textContent="Edit investment";$("saveButton").textContent="Save changes";$("cancelButton").hidden=false;window.scrollTo({top:0,behavior:"smooth"});
 }
-
-function deleteHolding(id) {
-  if(!confirm("Remove this holding from your tracker?")) return;
-  holdings=holdings.filter(h=>h.id!==id);
-  save();
-}
-
-function resetForm() {
-  $("holdingForm").reset();
-  $("editId").value="";
-  $("formTitle").textContent="Add a holding";
-  $("saveButton").textContent="Add holding";
-  $("cancelButton").hidden=true;
-}
+function deleteHolding(id){if(!confirm("Remove this investment from your tracker?"))return;holdings=holdings.filter(h=>h.id!==id);save();}
+function resetForm(){$("holdingForm").reset();$("editId").value="";$("formTitle").textContent="Add an investment";$("saveButton").textContent="Add investment";$("cancelButton").hidden=true;}
 $("cancelButton").addEventListener("click",resetForm);
-
 $("exportButton").addEventListener("click",()=>{
-  const blob=new Blob([JSON.stringify(holdings,null,2)],{type:"application/json"});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");
-  a.href=url;a.download="my-stock-portfolio-backup.json";a.click();
-  URL.revokeObjectURL(url);
+ const blob=new Blob([JSON.stringify(holdings,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");
+ a.href=url;a.download="morrow-investments-backup.json";a.click();URL.revokeObjectURL(url);
 });
-
 $("importFile").addEventListener("change",async e=>{
-  const file=e.target.files[0];
-  if(!file) return;
-  try {
-    const data=JSON.parse(await file.text());
-    if(!Array.isArray(data) || !data.every(h=>h.ticker && Number.isFinite(Number(h.units)) && Number.isFinite(Number(h.buy)) && Number.isFinite(Number(h.price)))) throw new Error();
-    if(!confirm("Replace your current holdings with this backup?")) return;
-    holdings=data.map(h=>({...h,id:String(h.id || Date.now()+Math.random())}));
-    save();
-    alert("Backup restored.");
-  } catch(err) { alert("That backup file doesn't look valid."); }
-  e.target.value="";
+ const file=e.target.files[0];if(!file)return;
+ try{const data=JSON.parse(await file.text());if(!Array.isArray(data)||!data.every(h=>h.ticker&&Number.isFinite(Number(h.units))&&Number.isFinite(Number(h.buy))&&Number.isFinite(Number(h.price))))throw new Error();
+ if(!confirm("Replace your current investments with this backup?"))return;
+ holdings=data.map(h=>({...h,id:String(h.id||Date.now()+Math.random())}));save();alert("Backup restored.");
+ }catch(err){alert("That backup file doesn't look valid.");}e.target.value="";
 });
 
-render();
+function calculateProjection(){
+ const start=Math.max(0,Math.min(100000000,number($("starting").value)));
+ const monthly=Math.max(0,Math.min(1000000,number($("monthly").value)));
+ const annual=Math.max(0,Math.min(30,number($("returnRate").value)))/100;
+ const years=Math.max(1,Math.min(60,Math.round(number($("years").value)||1)));
+ const months=years*12,monthlyRate=Math.pow(1+annual,1/12)-1;
+ let balance=start,paid=start;const points=[{month:0,balance,paid}];
+ for(let m=1;m<=months;m++){balance=balance*(1+monthlyRate)+monthly;paid+=monthly;if(m%12===0||m===months)points.push({month:m,balance,paid});}
+ const growth=Math.max(0,balance-paid);
+ $("futureValue").textContent=money(balance);$("contributed").textContent=money(paid);$("growth").textContent=money(growth);
+ $("futureSummary").textContent="After "+years+" year"+(years===1?"":"s")+", based on the assumptions you've chosen.";
+ drawChart(points);
+}
+function drawChart(points){
+ const canvas=$("growthChart"),rect=canvas.getBoundingClientRect(),dpr=window.devicePixelRatio||1;
+ const w=Math.max(280,rect.width),h=230;canvas.width=w*dpr;canvas.height=h*dpr;
+ const ctx=canvas.getContext("2d");ctx.scale(dpr,dpr);ctx.clearRect(0,0,w,h);
+ const pad={l:9,r:9,t:15,b:25},cw=w-pad.l-pad.r,ch=h-pad.t-pad.b;
+ const max=Math.max(1,...points.map(p=>p.balance))*1.08;
+ const x=i=>pad.l+(i/(points.length-1||1))*cw,y=v=>pad.t+ch-(v/max)*ch;
+ ctx.font="10px -apple-system, sans-serif";ctx.fillStyle="#AAB5C5";ctx.strokeStyle="#344155";ctx.lineWidth=1;
+ for(let i=0;i<=3;i++){const yy=pad.t+ch*i/3;ctx.beginPath();ctx.moveTo(pad.l,yy);ctx.lineTo(w-pad.r,yy);ctx.stroke();}
+ function line(key,color,width){ctx.beginPath();points.forEach((p,i)=>i?ctx.lineTo(x(i),y(p[key])):ctx.moveTo(x(i),y(p[key])));ctx.strokeStyle=color;ctx.lineWidth=width;ctx.lineJoin="round";ctx.lineCap="round";ctx.stroke();}
+ line("paid","#72839A",2);line("balance","#F28C28",3);
+ ctx.fillStyle="#AAB5C5";ctx.textAlign="left";ctx.fillText("Today",pad.l,h-5);ctx.textAlign="right";ctx.fillText(points[points.length-1].month/12+" years",w-pad.r,h-5);
+}
+$("calculateButton").addEventListener("click",calculateProjection);
+["starting","monthly","returnRate","years"].forEach(id=>$(id).addEventListener("input",calculateProjection));
+$("resetCalc").addEventListener("click",()=>{$("starting").value=1000;$("monthly").value=100;$("returnRate").value=5;$("years").value=20;calculateProjection();});
+let resizeTimer;window.addEventListener("resize",()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>{if(!$("future").hidden)calculateProjection();},120);});
+render();calculateProjection();
 </script>
 </body>
 </html>
