@@ -279,7 +279,8 @@ $("importFile").addEventListener("change",async e=>{
  }catch(err){alert("That backup file doesn't look valid.");}e.target.value="";
 });
 
-let projectionPoints=[];\nfunction calculateProjection(){
+let projectionPoints=[];
+function calculateProjection(){
  const start=Math.max(0,Math.min(100000000,number($("starting").value)));
  const monthly=Math.max(0,Math.min(1000000,number($("monthly").value)));
  const annual=Math.max(0,Math.min(30,number($("returnRate").value)))/100;
