@@ -403,7 +403,7 @@ function editHolding(id){
  $("formTitle").textContent="Edit investment";$("saveButton").textContent="Save changes";$("cancelButton").hidden=false;window.scrollTo({top:0,behavior:"smooth"});
 }
 function deleteHolding(id){if(!confirm("Remove this investment from your tracker?"))return;holdings=holdings.filter(h=>h.id!==id);save();}
-function resetForm(){$("holdingForm").reset();$("editId").value="";$("formTitle").textContent="Add an investment";$("saveButton").textContent="Add investment";$("cancelButton").hidden=true;}
+function resetForm(){$("holdingForm").reset();$("editId").value="";selectedInstrument=null;$("instrumentMeta").textContent="Search by company name or ticker symbol." ;closeTickerSuggestions();$("formTitle").textContent="Add an investment";$("saveButton").textContent="Add investment";$("cancelButton").hidden=true;}
 $("cancelButton").addEventListener("click",resetForm);
 $("exportButton").addEventListener("click",()=>{
  const blob=new Blob([JSON.stringify(holdings,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");
