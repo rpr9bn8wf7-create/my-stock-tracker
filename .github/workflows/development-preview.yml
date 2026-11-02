@@ -4,10 +4,6 @@ on:
   push:
     branches:
       - development
-    paths:
-      - '**'
-      - '!README.md'
-      - '!.github/workflows/development-preview.yml'
   workflow_dispatch:
 
 permissions:
