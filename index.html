@@ -182,7 +182,7 @@ canvas{display:block;width:100%;height:230px}
       <div class="field-hint">An assumption to explore, not a prediction or promise.</div>
       <label for="years">How far ahead? (years)</label><input id="years" type="number" min="1" max="60" step="1" value="20">
       <div class="field-hint">Try changing the time horizon to see the difference.</div>
-      <p class="field-hint" style="margin-top:17px">Your projection updates automatically as you change these figures.</p><div class="actions"><button class="secondary" type="button" id="resetCalc">Reset figures</button></div>
+      <p class="field-hint" style="margin-top:17px">When you’re happy with your figures, select the button below to see your projection.</p><div class="actions"><button class="primary" type="button" id="calculateButton">Show my projection</button><button class="secondary" type="button" id="resetCalc">Reset figures</button></div>
     </section>
     <section>
       <div class="result-hero">
@@ -217,7 +217,7 @@ function showView(id){
  document.querySelectorAll(".view").forEach(v=>v.hidden=v.id!==id);
  document.querySelectorAll(".nav button").forEach(b=>b.classList.toggle("active",b.dataset.view===id));
  window.scrollTo({top:0,behavior:"smooth"});
- if(id==="future")calculateProjection();
+ if(id==="future"&&projectionPoints.length)drawChart(projectionPoints);
 }
 function save(){localStorage.setItem(storageKey,JSON.stringify(holdings));render();}
 function escapeHTML(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
@@ -279,7 +279,7 @@ $("importFile").addEventListener("change",async e=>{
  }catch(err){alert("That backup file doesn't look valid.");}e.target.value="";
 });
 
-function calculateProjection(){
+let projectionPoints=[];\nfunction calculateProjection(){
  const start=Math.max(0,Math.min(100000000,number($("starting").value)));
  const monthly=Math.max(0,Math.min(1000000,number($("monthly").value)));
  const annual=Math.max(0,Math.min(30,number($("returnRate").value)))/100;
@@ -287,7 +287,7 @@ function calculateProjection(){
  const months=years*12,monthlyRate=Math.pow(1+annual,1/12)-1;
  let balance=start,paid=start;const points=[{month:0,balance,paid}];
  for(let m=1;m<=months;m++){balance=balance*(1+monthlyRate)+monthly;paid+=monthly;if(m%12===0||m===months)points.push({month:m,balance,paid});}
- const growth=Math.max(0,balance-paid);
+ const growth=Math.max(0,balance-paid);\n projectionPoints=points;
  $("futureValue").textContent=money(balance);$("contributed").textContent=money(paid);$("growth").textContent=money(growth);
  $("futureSummary").textContent="After "+years+" year"+(years===1?"":"s")+", based on the assumptions you've chosen.";
  drawChart(points);
@@ -306,9 +306,9 @@ function drawChart(points){
  ctx.fillStyle="#AAB5C5";ctx.textAlign="left";ctx.fillText("Today",pad.l,h-5);ctx.textAlign="right";ctx.fillText(points[points.length-1].month/12+" years",w-pad.r,h-5);
 }
 $("calculateButton").addEventListener("click",calculateProjection);
-["starting","monthly","returnRate","years"].forEach(id=>$(id).addEventListener("input",calculateProjection));
+
 $("resetCalc").addEventListener("click",()=>{$("starting").value=1000;$("monthly").value=100;$("returnRate").value=5;$("years").value=20;calculateProjection();});
-let resizeTimer;window.addEventListener("resize",()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>{if(!$("future").hidden)calculateProjection();},120);});
+let resizeTimer;window.addEventListener("resize",()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>{if(!$("future").hidden&&projectionPoints.length)drawChart(projectionPoints);},120);});
 render();calculateProjection();
 </script>
 </body>
