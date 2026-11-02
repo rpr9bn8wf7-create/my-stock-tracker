@@ -150,7 +150,7 @@ async function refreshVUAGPrice() {
   button.textContent = "Refreshing…";
   status.textContent = "Retrieving the latest available daily closing price…";
   try {
-    const response = await fetch("https://api.newtonanalytics.com/price/?ticker=VUAG.L&interval=1d&dataType=04&observations=1");
+    const response = await fetch("https://morrow-price-feed.jnkbnfzksg.workers.dev/vuag");
     if (!response.ok) throw new Error("Price service returned HTTP " + response.status);
     const result = await response.json();
     if (result.status !== "200" || !Array.isArray(result.data) || !result.data.length || !Number.isFinite(Number(result.data[0][1]))) {
