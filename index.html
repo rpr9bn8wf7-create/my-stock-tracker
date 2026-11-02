@@ -313,7 +313,7 @@ async function refreshPortfolioPrices(){
 $("holdingForm").addEventListener("submit",e=>{
  e.preventDefault();const id=$("editId").value||(Date.now().toString()+Math.random().toString(16).slice(2));
  const item={id,ticker:$("ticker").value.trim().toUpperCase(),name:$("name").value.trim(),units:number($("units").value),buy:number($("buy").value),price:number($("price").value),quoteDate:$("quoteDate").value,notes:$("notes").value.trim()};
- const index=holdings.findIndex(h=>h.id===id);if(index>=0){item.quoteSource=holdings[index].quoteSource;holdings[index]=item;}else holdings.push(item);
+ const index=holdings.findIndex(h=>h.id===id);if(index>=0){item.quoteSource=holdings[index].quoteSource;item.journeyMonthly=holdings[index].journeyMonthly;holdings[index]=item;}else holdings.push(item);
  resetForm();save();refreshPortfolioPrices();
 });
 function editHolding(id){
