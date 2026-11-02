@@ -288,7 +288,8 @@ function calculateProjection(){
  const months=years*12,monthlyRate=Math.pow(1+annual,1/12)-1;
  let balance=start,paid=start;const points=[{month:0,balance,paid}];
  for(let m=1;m<=months;m++){balance=balance*(1+monthlyRate)+monthly;paid+=monthly;if(m%12===0||m===months)points.push({month:m,balance,paid});}
- const growth=Math.max(0,balance-paid);\n projectionPoints=points;
+ const growth=Math.max(0,balance-paid);
+ projectionPoints=points;
  $("futureValue").textContent=money(balance);$("contributed").textContent=money(paid);$("growth").textContent=money(growth);
  $("futureSummary").textContent="After "+years+" year"+(years===1?"":"s")+", based on the assumptions you've chosen.";
  drawChart(points);
