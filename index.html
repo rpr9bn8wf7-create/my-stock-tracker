@@ -29,6 +29,8 @@ button.danger{background:#9b4149}
 .positive{color:#62d69a}.negative{color:#ff8585}
 .actions button{font-size:12px;padding:7px 10px}
 .empty{color:#aab7c6}
+.quote-status{font-size:13px;color:#aab7c6;margin-top:10px;min-height:18px}
+.source{color:#8fb8ff}
 @media(max-width:600px){body{padding:15px}.cards{grid-template-columns:1fr}.value{font-size:20px}}
 </style>
 </head>
@@ -68,6 +70,8 @@ button.danger{background:#9b4149}
 
 <section class="panel">
 <h2>Your investments</h2>
+<button type="button" id="refreshButton">Refresh VUAG price</button>
+<div id="quoteStatus" class="quote-status">VUAG prices can be refreshed using the end-of-day feed.</div>
 <div id="holdings"><p class="empty">No holdings added yet. Add your first investment above.</p></div>
 </section>
 
@@ -78,7 +82,7 @@ button.danger{background:#9b4149}
 <label for="importFile">Restore from backup</label>
 <input id="importFile" type="file" accept=".json,application/json">
 </section>
-<p class="meta">Prices are entered manually in this version. This tracker does not connect to a live market feed or provide investment advice.</p>
+<p class="meta">VUAG uses an end-of-day reference price from Newton Analytics when refreshed. Other holdings can still be updated manually. Prices are informational only, not investment advice.</p>
 </main>
 
 <script>
@@ -122,6 +126,7 @@ function render() {
       <strong>${escapeHTML(h.name)}</strong> <span class="meta">(${escapeHTML(h.ticker)})</span>
       <div class="meta">${h.units} units · Average buy ${money(h.buy)} · Latest ${money(h.price)}</div>
       <div class="meta">Holding value: <strong>${money(value)}</strong></div>
+      <div class="meta">${h.quoteSource ? `<span class="source">${escapeHTML(h.quoteSource)}</span>` : "Price entered manually"}</div>
       <div class="${cls}">${money(gain)} (${cost ? (gain/cost*100).toFixed(2) : "0.00"}%)</div>
       <div class="meta">Price date: ${escapeHTML(h.quoteDate || "Not entered")}${h.notes ? " · "+escapeHTML(h.notes):""}</div>
       <div class="actions">
@@ -131,6 +136,44 @@ function render() {
     </div>`;
   }).join("");
 }
+
+
+async function refreshVUAGPrice() {
+  const button = $("refreshButton");
+  const status = $("quoteStatus");
+  const matches = holdings.filter(h => String(h.ticker).toUpperCase() === "VUAG");
+  if (!matches.length) {
+    status.textContent = "Add a holding with ticker VUAG first.";
+    return;
+  }
+  button.disabled = true;
+  button.textContent = "Refreshing…";
+  status.textContent = "Retrieving the latest available daily closing price…";
+  try {
+    const response = await fetch("https://api.newtonanalytics.com/price/?ticker=VUAG.L&interval=1d&dataType=04&observations=1");
+    if (!response.ok) throw new Error("Price service returned HTTP " + response.status);
+    const result = await response.json();
+    if (result.status !== "200" || !Array.isArray(result.data) || !result.data.length || !Number.isFinite(Number(result.data[0][1]))) {
+      throw new Error(result.statusMessage || "No price was returned.");
+    }
+    const timestamp = Number(result.data[0][0]);
+    const price = Number(result.data[0][1]);
+    const date = new Date(timestamp * 1000).toISOString().slice(0, 10);
+    matches.forEach(h => {
+      h.price = price;
+      h.quoteDate = date;
+      h.quoteSource = "Newton Analytics · end-of-day";
+    });
+    save();
+    status.textContent = "VUAG updated to " + money(price) + " per unit · daily price dated " + date + ".";
+  } catch (error) {
+    status.textContent = "Couldn't refresh VUAG: " + error.message + " Your saved prices haven't been changed.";
+  } finally {
+    button.disabled = false;
+    button.textContent = "Refresh VUAG price";
+  }
+}
+$("refreshButton").addEventListener("click", refreshVUAGPrice);
 
 function escapeHTML(s) {
   return String(s ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
