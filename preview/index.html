@@ -338,6 +338,38 @@ function render(){
   '<div class="actions"><button class="primary" onclick="openJourney(\''+String(h.id).replace(/'/g,"\\'")+'\')">View investment journey</button><button class="secondary" onclick="editHolding(\''+String(h.id).replace(/'/g,"\\'")+'\')">Edit</button><button class="danger" onclick="deleteHolding(\''+String(h.id).replace(/'/g,"\\'")+'\')">Remove</button></div></div>';
  }).join("");
 }
+let tickerSearchTimer=null,tickerSearchRequest=0,selectedInstrument=null;
+const tickerInput=$("ticker"),suggestionBox=$("tickerSuggestions");
+function closeTickerSuggestions(){suggestionBox.hidden=true;suggestionBox.innerHTML="";}
+function showTickerMessage(message){suggestionBox.innerHTML='<div class="suggestion"><small>'+escapeHTML(message)+'</small></div>';suggestionBox.hidden=false;}
+async function searchInstruments(query){
+ const request=++tickerSearchRequest;
+ try{
+  const response=await fetch("https://morrow-price-feed.jnkbnfzksg.workers.dev/search?q="+encodeURIComponent(query));
+  if(!response.ok)throw new Error("Search service returned HTTP "+response.status);
+  const data=await response.json();if(request!==tickerSearchRequest)return;
+  if(!Array.isArray(data.results)||!data.results.length){showTickerMessage("No matching investments found. Try another name or ticker.");return;}
+  suggestionBox.innerHTML=data.results.map((item,index)=>'<button type="button" class="suggestion" role="option" data-index="'+index+'"><strong>'+escapeHTML(item.name)+' · '+escapeHTML(item.symbol)+'</strong><small>'+escapeHTML([item.exchange,item.country,item.instrumentType,item.currency].filter(Boolean).join(" · "))+'</small></button>').join("");
+  suggestionBox.hidden=false;
+  suggestionBox.querySelectorAll("button").forEach((button,index)=>button.addEventListener("click",()=>selectInstrument(data.results[index])));
+ }catch(error){if(request===tickerSearchRequest)showTickerMessage("Search is temporarily unavailable. You can still enter the details manually.");}
+}
+function selectInstrument(item){
+ selectedInstrument=item;
+ tickerInput.value=item.symbol||"";
+ $("name").value=item.name||item.symbol||"";
+ $("instrumentMeta").textContent=[item.exchange,item.micCode,item.instrumentType,item.currency].filter(Boolean).join(" · ")+" · "+(item.provider||"Market data");
+ closeTickerSuggestions();
+}
+tickerInput.addEventListener("input",()=>{
+ selectedInstrument=null;$("instrumentMeta").textContent="Search by company name or ticker symbol.";
+ const query=tickerInput.value.trim();clearTimeout(tickerSearchTimer);++tickerSearchRequest;
+ if(query.length<2){closeTickerSuggestions();return;}
+ showTickerMessage("Searching investments…");
+ tickerSearchTimer=setTimeout(()=>searchInstruments(query),350);
+});
+tickerInput.addEventListener("keydown",e=>{if(e.key==="Escape")closeTickerSuggestions();});
+document.addEventListener("click",e=>{if(!e.target.closest(".search-wrap"))closeTickerSuggestions();});
 let activeJourney=null,historyData=[],historyPeriod="5Y",projectionMode="existing";
 let priceRefreshInProgress=false;
 async function refreshPortfolioPrices(){
@@ -361,13 +393,13 @@ async function refreshPortfolioPrices(){
 }
 $("holdingForm").addEventListener("submit",e=>{
  e.preventDefault();const id=$("editId").value||(Date.now().toString()+Math.random().toString(16).slice(2));
- const item={id,ticker:$("ticker").value.trim().toUpperCase(),name:$("name").value.trim(),units:number($("units").value),buy:number($("buy").value),price:number($("price").value),quoteDate:$("quoteDate").value,notes:$("notes").value.trim()};
+ const item={id,ticker:$("ticker").value.trim().toUpperCase(),name:$("name").value.trim(),units:number($("units").value),buy:number($("buy").value),price:number($("price").value),quoteDate:$("quoteDate").value,notes:$("notes").value.trim(),exchange:selectedInstrument?.exchange||"",micCode:selectedInstrument?.micCode||"",nativeCurrency:selectedInstrument?.currency||"GBP",instrumentType:selectedInstrument?.instrumentType||"Manual entry"};
  const index=holdings.findIndex(h=>h.id===id);if(index>=0){item.quoteSource=holdings[index].quoteSource;item.journeyMonthly=holdings[index].journeyMonthly;holdings[index]=item;}else holdings.push(item);
  resetForm();save();refreshPortfolioPrices();
 });
 function editHolding(id){
  const h=holdings.find(x=>x.id===id);if(!h)return;
- $("editId").value=h.id;["ticker","name","units","buy","price","quoteDate","notes"].forEach(k=>$(k).value=h[k]??"");
+ $("editId").value=h.id;selectedInstrument={symbol:h.ticker,name:h.name,exchange:h.exchange||"",micCode:h.micCode||"",currency:h.nativeCurrency||"GBP",instrumentType:h.instrumentType||"Manual entry"};$("instrumentMeta").textContent=[selectedInstrument.exchange,selectedInstrument.micCode,selectedInstrument.instrumentType,selectedInstrument.currency].filter(Boolean).join(" · ");["ticker","name","units","buy","price","quoteDate","notes"].forEach(k=>$(k).value=h[k]??"");
  $("formTitle").textContent="Edit investment";$("saveButton").textContent="Save changes";$("cancelButton").hidden=false;window.scrollTo({top:0,behavior:"smooth"});
 }
 function deleteHolding(id){if(!confirm("Remove this investment from your tracker?"))return;holdings=holdings.filter(h=>h.id!==id);save();}
