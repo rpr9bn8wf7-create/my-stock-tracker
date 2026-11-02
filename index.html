@@ -80,6 +80,25 @@ canvas{display:block;width:100%;height:230px}
 .footer{border-top:1px solid var(--line);margin-top:38px;padding-top:17px;text-align:center;color:#8291A4;font-size:11px}
 @media(max-width:700px){.shell{padding:15px 15px 35px}.home-grid{grid-template-columns:1fr}.destination{min-height:145px}.calculator-layout{grid-template-columns:1fr}.metrics{grid-template-columns:1fr}.page-head{align-items:flex-start;flex-direction:column}.nav{width:100%;display:grid;grid-template-columns:repeat(3,1fr)}.nav button{padding:8px 5px;font-size:12px}.tagline{display:none}}
 @media(min-width:701px) and (max-width:850px){.home-grid{grid-template-columns:1fr 1fr}}
+
+.journey-top{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+.journey-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:16px 0}
+.journey-metrics .metric{padding:15px}
+.journey-metrics .value{font-size:clamp(18px,3vw,24px);font-weight:750;margin-top:5px}
+.periods,.scenario-legend{display:flex;gap:7px;flex-wrap:wrap}
+.periods button{background:var(--surface2);border:1px solid var(--line);color:var(--muted);padding:7px 13px;border-radius:20px;font-size:12px}
+.periods button.active{background:var(--orange);color:#21180F;border-color:var(--orange);font-weight:750}
+.journey-chart{margin-top:14px}
+.journey-chart canvas{height:260px}
+.scenario-grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(220px,.8fr);gap:13px;margin-top:14px}
+.scenario-row{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);font-size:13px}
+.scenario-row:last-child{border-bottom:0}
+.scenario-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px}
+.monthly-control{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-top:14px}
+.monthly-control>div{flex:1;min-width:150px}
+.monthly-control label{margin-top:0}
+.stress-value{font-weight:750}
+@media(max-width:700px){.journey-metrics{grid-template-columns:1fr}.scenario-grid{grid-template-columns:1fr}.journey-chart canvas{height:220px}}
 </style>
 </head>
 <body>
@@ -160,6 +179,38 @@ canvas{display:block;width:100%;height:230px}
   <p class="disclaimer">VUAG uses an end-of-day reference price from Newton Analytics when refreshed. Other holdings can be updated manually. Prices are informational only, not investment advice.</p>
 </section>
 
+
+<section class="view" id="journey" hidden>
+ <button class="back-link" onclick="showView('investments')">← Back to investments</button>
+ <div class="journey-top"><div><div class="eyebrow">Your investment journey</div><h1 id="journeyName">Investment</h1><p class="intro" id="journeySubtitle">Past performance and possible future scenarios.</p></div></div>
+ <div class="journey-metrics">
+  <div class="metric"><small>Current price</small><div class="value" id="journeyPrice">—</div></div>
+  <div class="metric"><small>Current holding value</small><div class="value" id="journeyValue">—</div><div class="meta" id="journeyUnits"></div></div>
+  <div class="metric"><small>Gain / loss against purchase cost</small><div class="value" id="journeyGain">—</div><div class="meta" id="journeyGainPct"></div></div>
+ </div>
+ <section class="panel journey-chart">
+  <div class="journey-top"><div><h2>Historical performance</h2><p class="meta">Adjusted historical price per unit · dividends and corporate actions reflected where provided by the data source</p></div><div class="periods" id="historyPeriods"><button data-period="1M">1M</button><button data-period="6M">6M</button><button data-period="1Y">1Y</button><button data-period="5Y" class="active">5Y</button><button data-period="ALL">All</button></div></div>
+  <canvas id="historyChart" role="img" aria-label="Historical adjusted price chart"></canvas><p class="meta" id="historyStatus">Loading historical data…</p>
+ </section>
+ <div class="scenario-grid">
+  <section class="panel">
+   <h2>Future projections</h2><p class="meta">Illustrative scenarios starting from your actual current holding value. These are assumptions, not forecasts.</p>
+   <label for="journeyYears">Projection period</label><select id="journeyYears" style="width:100%;padding:10px;border-radius:9px;background:#111B28;color:white;border:1px solid #405168"><option value="1">1 year</option><option value="3">3 years</option><option value="5" selected>5 years</option><option value="10">10 years</option><option value="15">15 years</option><option value="20">20 years</option></select>
+   <div class="monthly-control"><div><label for="journeyMonthly">Monthly contribution to this investment (£)</label><input id="journeyMonthly" type="number" min="0" max="1000000" step="1" value="0"></div><button class="secondary" id="saveMonthly">Save amount</button></div>
+   <div class="actions"><button class="secondary" id="existingOnly">Existing investment only</button><button class="primary" id="withMonthly">With monthly contributions</button></div>
+   <div class="scenario-legend" style="margin-top:17px"><span><i class="scenario-dot" style="background:#F28C28"></i>Cautious · 2% p.a.</span><span><i class="scenario-dot" style="background:#55A9F5"></i>Moderate · 5% p.a.</span><span><i class="scenario-dot" style="background:#71D6A0"></i>Optimistic · 8% p.a.</span></div>
+   <canvas id="scenarioChart" role="img" aria-label="Cautious, moderate and optimistic future investment scenarios"></canvas>
+   <div id="scenarioResults"></div>
+  </section>
+  <section class="panel">
+   <h2>Stress test</h2><p class="meta">What would your holding be worth after an immediate market fall?</p>
+   <div id="stressResults"></div>
+   <div class="note">A market fall is not a forecast. This simply illustrates how sensitive your current holding is to a sudden decline.</div>
+  </section>
+ </div>
+ <p class="disclaimer">Historical adjusted prices are supplied by Newton Analytics and may differ from the unadjusted daily price used to value your holding. Future scenarios assume steady annual growth compounded monthly, with contributions at month-end. They exclude fees, tax and inflation. Actual returns can be negative, and you could get back less than you invest. This is educational information, not financial advice.</p>
+</section>
+
 <section class="view" id="briefing" hidden>
   <button class="back-link" onclick="showView('home')">← Back to home</button>
   <div class="eyebrow">A clearer view of the day</div><h1>Daily briefing</h1>
@@ -216,7 +267,7 @@ function showView(id){
  document.querySelectorAll(".view").forEach(v=>v.hidden=v.id!==id);
  document.querySelectorAll(".nav button").forEach(b=>b.classList.toggle("active",b.dataset.view===id));
  window.scrollTo({top:0,behavior:"smooth"});
- if(id==="future"&&projectionPoints.length)drawChart(projectionPoints);
+ if(id==="future"&&projectionPoints.length)drawChart(projectionPoints);if(id==="journey"&&historyData.length)drawHistoryChart(historyData);
 }
 function save(){localStorage.setItem(storageKey,JSON.stringify(holdings));render();}
 function escapeHTML(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
@@ -235,9 +286,10 @@ function render(){
   '<div class="meta">'+(h.quoteSource?'<span class="source">'+escapeHTML(h.quoteSource)+'</span>':"Price entered manually")+'</div>'+
   '<div class="'+cls+'">'+money(gain)+' ('+(cost?(gain/cost*100).toFixed(2):"0.00")+'%)</div>'+
   '<div class="meta">Price date: '+escapeHTML(h.quoteDate||"Not entered")+(h.notes?" · "+escapeHTML(h.notes):"")+'</div>'+
-  '<div class="actions"><button class="secondary" onclick="editHolding(\''+String(h.id).replace(/'/g,"\\'")+'\')">Edit</button><button class="danger" onclick="deleteHolding(\''+String(h.id).replace(/'/g,"\\'")+'\')">Remove</button></div></div>';
+  '<div class="actions"><button class="primary" onclick="openJourney(\''+String(h.id).replace(/'/g,"\\'")+'\')">View investment journey</button><button class="secondary" onclick="editHolding(\''+String(h.id).replace(/'/g,"\\'")+'\')">Edit</button><button class="danger" onclick="deleteHolding(\''+String(h.id).replace(/'/g,"\\'")+'\')">Remove</button></div></div>';
  }).join("");
 }
+let activeJourney=null,historyData=[],historyPeriod="5Y",projectionMode="existing";
 let priceRefreshInProgress=false;
 async function refreshPortfolioPrices(){
  const status=$("quoteStatus"),matches=holdings.filter(h=>String(h.ticker).toUpperCase()==="VUAG");
@@ -284,6 +336,77 @@ $("importFile").addEventListener("change",async e=>{
  }catch(err){alert("That backup file doesn't look valid.");}e.target.value="";
 });
 
+
+function openJourney(id){
+ activeJourney=holdings.find(h=>h.id===id);if(!activeJourney)return;
+ $("journeyName").textContent=activeJourney.name+" ("+activeJourney.ticker+")";
+ $("journeySubtitle").textContent="Your investment journey — past performance and possible future scenarios.";
+ const value=activeJourney.units*activeJourney.price,cost=activeJourney.units*activeJourney.buy,gain=value-cost;
+ $("journeyPrice").textContent=money(activeJourney.price);$("journeyValue").textContent=money(value);
+ $("journeyUnits").textContent=Number(activeJourney.units).toLocaleString("en-GB")+" units";
+ $("journeyGain").textContent=money(gain);$("journeyGain").className="value "+(gain>=0?"positive":"negative");
+ $("journeyGainPct").textContent=(cost?gain/cost*100:0).toFixed(2)+"% against purchase cost";
+ $("journeyMonthly").value=number(activeJourney.journeyMonthly);
+ $("journeyYears").value="5";projectionMode="existing";setJourneyModeButtons();
+ showView("journey");loadJourneyHistory();calculateJourneyScenarios();
+}
+function setJourneyModeButtons(){
+ $("existingOnly").className=projectionMode==="existing"?"primary":"secondary";
+ $("withMonthly").className=projectionMode==="monthly"?"primary":"secondary";
+}
+async function loadJourneyHistory(){
+ $("historyStatus").textContent="Loading historical data…";historyData=[];
+ if(String(activeJourney.ticker).toUpperCase()!=="VUAG"){
+  $("historyStatus").textContent="Historical price data is currently available for VUAG only. Other holdings can still use the future scenario modeller.";
+  drawHistoryChart([]);return;
+ }
+ try{
+  const response=await fetch("https://morrow-price-feed.jnkbnfzksg.workers.dev/vuag-history");
+  if(!response.ok)throw new Error("Historical data service returned HTTP "+response.status);
+  const result=await response.json();
+  if(result.status!=="200"||!Array.isArray(result.data)||!result.data.length)throw new Error(result.error||"No historical prices were returned.");
+  historyData=result.data.map(row=>({date:new Date(Number(row[0])*1000),price:Number(row[1])})).filter(p=>Number.isFinite(p.price)&&!isNaN(p.date)).sort((a,b)=>a.date-b.date);
+  $("historyStatus").textContent=historyData.length+" daily observations · latest observation "+historyData[historyData.length-1].date.toLocaleDateString("en-GB");
+  drawHistoryChart(historyData);
+ }catch(error){$("historyStatus").textContent="Couldn't load historical data: "+error.message;drawHistoryChart([]);}
+}
+function drawHistoryChart(data){
+ const canvas=$("historyChart"),rect=canvas.getBoundingClientRect(),dpr=window.devicePixelRatio||1,w=Math.max(280,rect.width),h=260;
+ canvas.width=w*dpr;canvas.height=h*dpr;const ctx=canvas.getContext("2d");ctx.scale(dpr,dpr);ctx.clearRect(0,0,w,h);
+ let filtered=data;
+ if(data.length){const days=historyPeriod==="1M"?31:historyPeriod==="6M"?183:historyPeriod==="1Y"?365:historyPeriod==="5Y"?1826:99999;const cutoff=new Date(data[data.length-1].date);cutoff.setDate(cutoff.getDate()-days);filtered=data.filter(p=>p.date>=cutoff);}
+ if(filtered.length<2){ctx.fillStyle="#AAB5C5";ctx.font="13px sans-serif";ctx.fillText(data.length?"Not enough observations for this period.":"Historical chart will appear when data is available.",12,35);return;}
+ const pad={l:48,r:12,t:16,b:30},cw=w-pad.l-pad.r,ch=h-pad.t-pad.b,min=Math.min(...filtered.map(p=>p.price)),max=Math.max(...filtered.map(p=>p.price)),range=Math.max(.01,max-min);
+ const x=i=>pad.l+i/(filtered.length-1)*cw,y=v=>pad.t+(max-v)/range*ch;
+ ctx.strokeStyle="#344155";ctx.fillStyle="#AAB5C5";ctx.font="10px sans-serif";
+ for(let i=0;i<=4;i++){const yy=pad.t+i*ch/4;ctx.beginPath();ctx.moveTo(pad.l,yy);ctx.lineTo(w-pad.r,yy);ctx.stroke();ctx.fillText("£"+(max-i*range/4).toFixed(2),3,yy+3);}
+ ctx.beginPath();filtered.forEach((p,i)=>i?ctx.lineTo(x(i),y(p.price)):ctx.moveTo(x(i),y(p.price)));ctx.strokeStyle="#55A9F5";ctx.lineWidth=2;ctx.stroke();
+ ctx.fillStyle="#AAB5C5";ctx.fillText(filtered[0].date.toLocaleDateString("en-GB"),pad.l,h-7);ctx.textAlign="right";ctx.fillText(filtered[filtered.length-1].date.toLocaleDateString("en-GB"),w-pad.r,h-7);ctx.textAlign="left";
+}
+function calculateJourneyScenarios(){
+ if(!activeJourney)return;
+ const years=Number($("journeyYears").value),start=activeJourney.units*activeJourney.price,monthly=projectionMode==="monthly"?Math.max(0,number(activeJourney.journeyMonthly)):0;
+ const rates=[{name:"Cautious",rate:.02,color:"#F28C28"},{name:"Moderate",rate:.05,color:"#55A9F5"},{name:"Optimistic",rate:.08,color:"#71D6A0"}];
+ const results=rates.map(s=>{let balance=start;const r=Math.pow(1+s.rate,1/12)-1,pts=[balance];for(let m=1;m<=years*12;m++){balance=balance*(1+r)+monthly;if(m%12===0)pts.push(balance);}return {...s,value:balance,points:pts};});
+ $("scenarioResults").innerHTML=results.map(s=>'<div class="scenario-row"><span><i class="scenario-dot" style="background:'+s.color+'"></i>'+s.name+' ('+(s.rate*100).toFixed(0)+'% p.a.)</span><strong>'+money(s.value)+'</strong></div>').join("")+'<p class="meta" style="margin-top:8px">'+(projectionMode==="monthly"?"Includes "+money(monthly)+" added at the end of each month.":"No additional contributions included.")+'</p>';
+ $("stressResults").innerHTML=[20,30,40].map(p=>'<div class="scenario-row"><span>−'+p+'% market fall</span><span class="stress-value">'+money(start*(1-p/100))+'</span></div>').join("");
+ drawScenarioChart(results,years);
+}
+function drawScenarioChart(results,years){
+ const canvas=$("scenarioChart"),rect=canvas.getBoundingClientRect(),dpr=window.devicePixelRatio||1,w=Math.max(280,rect.width),h=220;canvas.width=w*dpr;canvas.height=h*dpr;
+ const ctx=canvas.getContext("2d");ctx.scale(dpr,dpr);ctx.clearRect(0,0,w,h);
+ const pad={l:12,r:12,t:15,b:24},cw=w-pad.l-pad.r,ch=h-pad.t-pad.b,max=Math.max(1,...results.flatMap(s=>s.points))*1.08;
+ const x=i=>pad.l+i/years*cw,y=v=>pad.t+ch-v/max*ch;
+ ctx.strokeStyle="#344155";for(let i=0;i<=3;i++){const yy=pad.t+i*ch/3;ctx.beginPath();ctx.moveTo(pad.l,yy);ctx.lineTo(w-pad.r,yy);ctx.stroke();}
+ results.forEach(s=>{ctx.beginPath();s.points.forEach((v,i)=>i?ctx.lineTo(x(i),y(v)):ctx.moveTo(x(i),y(v)));ctx.strokeStyle=s.color;ctx.lineWidth=2.5;ctx.setLineDash([6,5]);ctx.stroke();ctx.setLineDash([]);});
+ ctx.fillStyle="#AAB5C5";ctx.font="10px sans-serif";ctx.fillText("Today",pad.l,h-5);ctx.textAlign="right";ctx.fillText(years+" years",w-pad.r,h-5);ctx.textAlign="left";
+}
+$("historyPeriods").addEventListener("click",e=>{const b=e.target.closest("button[data-period]");if(!b)return;historyPeriod=b.dataset.period;$("historyPeriods").querySelectorAll("button").forEach(x=>x.classList.toggle("active",x===b));drawHistoryChart(historyData);});
+$("saveMonthly").addEventListener("click",()=>{if(!activeJourney)return;activeJourney.journeyMonthly=Math.max(0,number($("journeyMonthly").value));localStorage.setItem(storageKey,JSON.stringify(holdings));$("journeyMonthly").value=activeJourney.journeyMonthly;calculateJourneyScenarios();});
+$("existingOnly").addEventListener("click",()=>{projectionMode="existing";setJourneyModeButtons();calculateJourneyScenarios();});
+$("withMonthly").addEventListener("click",()=>{projectionMode="monthly";activeJourney.journeyMonthly=Math.max(0,number($("journeyMonthly").value));localStorage.setItem(storageKey,JSON.stringify(holdings));setJourneyModeButtons();calculateJourneyScenarios();});
+$("journeyYears").addEventListener("change",calculateJourneyScenarios);
+
 let projectionPoints=[];
 function calculateProjection(){
  const start=Math.max(0,Math.min(100000000,number($("starting").value)));
@@ -315,7 +438,7 @@ function drawChart(points){
 $("calculateButton").addEventListener("click",calculateProjection);
 
 $("resetCalc").addEventListener("click",()=>{$("starting").value=1000;$("monthly").value=100;$("returnRate").value=5;$("years").value=20;calculateProjection();});
-let resizeTimer;window.addEventListener("resize",()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>{if(!$("future").hidden&&projectionPoints.length)drawChart(projectionPoints);},120);});
+let resizeTimer;window.addEventListener("resize",()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>{if(!$("future").hidden&&projectionPoints.length)drawChart(projectionPoints);if(!$("journey").hidden){drawHistoryChart(historyData);if(activeJourney)calculateJourneyScenarios();}},120);});
 render();calculateProjection();refreshPortfolioPrices();
 setInterval(refreshPortfolioPrices,6*60*60*1000);
 </script>
