@@ -143,7 +143,7 @@ canvas{display:block;width:100%;height:230px}
 
 <section class="view" id="investments" hidden>
   <button class="back-link" onclick="showView('home')">← Back to home</button>
-  <div class="page-head"><div><div class="eyebrow">Your portfolio</div><h1>My investments</h1><p>A simple view of your investments, in pounds sterling.</p></div></div>
+  <div class="page-head"><div><div class="eyebrow">Your portfolio</div><h1>My investments</h1><p id="portfolioDescription">A simple view of your investments, in pounds sterling.</p></div></div>
   <section class="panel" style="margin-bottom:16px">
     <h2>Settings</h2>
     <label for="displayCurrency">Portfolio display currency</label>
@@ -294,6 +294,7 @@ async function updateDisplayCurrency(){
    status.textContent="Couldn't retrieve the exchange rate, so Morrow has kept your display currency in GBP. "+error.message;
   }
  }else status.textContent="Portfolio figures are displayed in pounds sterling.";
+ $("portfolioDescription").textContent="A simple view of your investments, in "+currencyNames[displayCurrency]+".";
  render();
  if(activeJourney)openJourney(activeJourney.id);
 }
