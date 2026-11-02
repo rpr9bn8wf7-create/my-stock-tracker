@@ -63,6 +63,20 @@ button.danger{background:#713D48;color:white;border:0;border-radius:8px;padding:
 .empty{color:var(--muted);font-size:14px}
 .calculator-layout{display:grid;grid-template-columns:minmax(0, .9fr) minmax(0,1.1fr);gap:15px;align-items:start}
 .field-hint{font-size:11px;color:var(--muted);margin-top:5px}
+.currency-control{position:relative;display:flex;justify-content:flex-end;margin:-5px 0 16px}
+.currency-trigger{display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);color:var(--text);padding:9px 13px;border-radius:22px;font-size:13px;font-weight:700}
+.currency-popover{position:absolute;right:0;top:calc(100% + 9px);z-index:20;width:min(340px,calc(100vw - 44px));padding:17px;background:var(--surface);border:1px solid #526178;border-radius:14px;box-shadow:0 16px 38px #0008}
+.currency-popover[hidden],.suggestions[hidden]{display:none}
+.currency-options{display:flex;gap:7px;margin:10px 0}
+.currency-options button{flex:1;padding:9px 5px;border:1px solid var(--line);border-radius:20px;background:var(--surface2);color:var(--text);font-size:12px}
+.currency-options button.active{background:var(--orange);border-color:var(--orange);color:#21180F;font-weight:750}
+.search-wrap{position:relative}
+.suggestions{position:absolute;z-index:15;top:100%;left:0;right:0;margin-top:5px;background:var(--surface2);border:1px solid #526178;border-radius:10px;box-shadow:0 12px 28px #0008;max-height:270px;overflow:auto}
+.suggestion{display:block;width:100%;text-align:left;padding:10px 12px;background:transparent;border:0;border-bottom:1px solid var(--line);color:var(--text)}
+.suggestion:hover,.suggestion:focus{background:#34465D}
+.suggestion strong{display:block;font-size:13px}
+.suggestion small,.instrument-meta{display:block;color:var(--muted);font-size:11px;margin-top:3px}
+
 .result-hero{background:linear-gradient(135deg,#263A50,#1D2A3D);border:1px solid #46566B;border-radius:15px;padding:21px;margin-bottom:13px}
 .result-hero small{color:#C1CBD7}
 .result-amount{font-size:clamp(29px,5vw,39px);font-weight:780;letter-spacing:-1.2px;margin:5px 0;color:white}
@@ -144,17 +158,14 @@ canvas{display:block;width:100%;height:230px}
 <section class="view" id="investments" hidden>
   <button class="back-link" onclick="showView('home')">← Back to home</button>
   <div class="page-head"><div><div class="eyebrow">Your portfolio</div><h1>My investments</h1><p id="portfolioDescription">A simple view of your investments, in pounds sterling.</p></div></div>
-  <section class="panel" style="margin-bottom:16px">
-    <h2>Settings</h2>
-    <label for="displayCurrency">Portfolio display currency</label>
-    <select id="displayCurrency" style="width:100%;padding:11px 12px;border-radius:9px;border:1px solid #405168;background:#111B28;color:white">
-      <option value="GBP">GBP · Pounds sterling (£)</option>
-      <option value="USD">USD · US dollars ($)</option>
-      <option value="EUR">EUR · Euros (€)</option>
-    </select>
-    <p class="meta" id="currencyStatus">Portfolio figures are displayed in pounds sterling.</p>
-    <p class="field-hint">Changing this setting changes how Morrow displays portfolio values. It does not change the currency in which an investment trades or the currency of your original records.</p>
-  </section>
+  <div class="currency-control"><button type="button" class="currency-trigger" id="currencyTrigger" aria-expanded="false" aria-controls="currencyPopover">◎ <span id="currencyTriggerLabel">GBP £</span> ▾</button>
+    <section class="currency-popover" id="currencyPopover" hidden>
+      <div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0">⚙ Settings</h2><button type="button" class="quiet-button" id="closeCurrencySettings" aria-label="Close settings">✕</button></div>
+      <h3 style="margin-top:17px">Display currency</h3><p class="meta">Choose how your portfolio values are presented.</p>
+      <div class="currency-options"><button type="button" data-currency="GBP">GBP £</button><button type="button" data-currency="USD">USD $</button><button type="button" data-currency="EUR">EUR €</button></div>
+      <p class="meta" id="currencyStatus">Portfolio figures are displayed in pounds sterling.</p>
+      <p class="field-hint">Your original investment records are not changed by this display preference.</p>
+    </section></div>
   <div class="metrics">
     <div class="metric"><small>Portfolio value</small><div class="value" id="total">£0.00</div></div>
     <div class="metric"><small>Total invested</small><div class="value" id="invested">£0.00</div></div>
@@ -165,8 +176,8 @@ canvas{display:block;width:100%;height:230px}
     <form id="holdingForm">
       <input type="hidden" id="editId">
       <div class="form-grid">
-        <div><label for="ticker">Ticker / share symbol</label><input id="ticker" placeholder="e.g. VUAG" required></div>
-        <div><label for="name">Investment name</label><input id="name" placeholder="e.g. Vanguard S&P 500 ETF" required></div>
+        <div class="search-wrap"><label for="ticker">Find an investment</label><input id="ticker" placeholder="Search company or ticker, e.g. Apple or VUAG" autocomplete="off" required aria-autocomplete="list" aria-controls="tickerSuggestions"><div id="tickerSuggestions" class="suggestions" role="listbox" hidden></div><div id="instrumentMeta" class="instrument-meta">Search by company name or ticker symbol.</div></div>
+        <div><label for="name">Investment name</label><input id="name" placeholder="Selected investment name" required></div>
         <div><label for="units">Number of shares / units</label><input id="units" type="number" min="0" step="any" placeholder="e.g. 25" required></div>
         <div><label for="buy">Average purchase price per unit (£)</label><input id="buy" type="number" min="0" step="any" placeholder="e.g. 85.50" required></div>
         <div><label for="price">Latest price per unit (£)</label><input id="price" type="number" min="0" step="any" placeholder="e.g. 92.10" required></div>
@@ -276,6 +287,7 @@ const currencyKey="morrowDisplayCurrency";
 let displayCurrency=localStorage.getItem(currencyKey)||"GBP";
 let displayRate=1;
 const currencyNames={GBP:"pounds sterling",USD:"US dollars",EUR:"euros"};
+const currencySymbols={GBP:"£",USD:"$",EUR:"€"};
 const money=n=>new Intl.NumberFormat(displayCurrency==="USD"?"en-US":"en-GB",{style:"currency",currency:displayCurrency}).format((Number(n)||0)*displayRate);
 const number=n=>Number(n)||0;
 async function updateDisplayCurrency(){
@@ -295,6 +307,8 @@ async function updateDisplayCurrency(){
   }
  }else status.textContent="Portfolio figures are displayed in pounds sterling.";
  $("portfolioDescription").textContent="A simple view of your investments, in "+currencyNames[displayCurrency]+".";
+ $("currencyTriggerLabel").textContent=displayCurrency+" "+currencySymbols[displayCurrency];
+ document.querySelectorAll("[data-currency]").forEach(b=>b.classList.toggle("active",b.dataset.currency===displayCurrency));
  render();
  if(activeJourney)openJourney(activeJourney.id);
 }
@@ -474,8 +488,11 @@ $("calculateButton").addEventListener("click",calculateProjection);
 
 $("resetCalc").addEventListener("click",()=>{$("starting").value=1000;$("monthly").value=100;$("returnRate").value=5;$("years").value=20;calculateProjection();});
 let resizeTimer;window.addEventListener("resize",()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>{if(!$("future").hidden&&projectionPoints.length)drawChart(projectionPoints);if(!$("journey").hidden){drawHistoryChart(historyData);if(activeJourney)calculateJourneyScenarios();}},120);});
-$("displayCurrency").value=displayCurrency;
-$("displayCurrency").addEventListener("change",e=>{displayCurrency=e.target.value;localStorage.setItem(currencyKey,displayCurrency);updateDisplayCurrency();});
+const currencyPopover=$("currencyPopover"),currencyTrigger=$("currencyTrigger");
+currencyTrigger.addEventListener("click",()=>{currencyPopover.hidden=!currencyPopover.hidden;currencyTrigger.setAttribute("aria-expanded",String(!currencyPopover.hidden));});
+$("closeCurrencySettings").addEventListener("click",()=>{currencyPopover.hidden=true;currencyTrigger.setAttribute("aria-expanded","false");});
+document.querySelectorAll("[data-currency]").forEach(b=>b.addEventListener("click",()=>{displayCurrency=b.dataset.currency;localStorage.setItem(currencyKey,displayCurrency);updateDisplayCurrency();}));
+document.addEventListener("click",e=>{if(!currencyPopover.hidden&&!currencyPopover.contains(e.target)&&!currencyTrigger.contains(e.target)){currencyPopover.hidden=true;currencyTrigger.setAttribute("aria-expanded","false");}});
 render();calculateProjection();updateDisplayCurrency();refreshPortfolioPrices();
 setInterval(refreshPortfolioPrices,6*60*60*1000);
 </script>
