@@ -1,0 +1,49 @@
+name: Publish Morrow development preview
+
+on:
+  push:
+    branches:
+      - development
+    paths:
+      - '**'
+      - '!README.md'
+      - '!.github/workflows/development-preview.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out development
+        uses: actions/checkout@v4
+        with:
+          ref: development
+          path: source
+
+      - name: Check out main publishing branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: publishing
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Copy development app into preview folder
+        run: |
+          mkdir -p publishing/preview
+          rsync -a --delete --exclude='.git' --exclude='.github' source/ publishing/preview/
+
+      - name: Commit and push preview
+        working-directory: publishing
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add preview
+          if git diff --cached --quiet; then
+            echo "Preview is already up to date."
+            exit 0
+          fi
+          git commit -m "Publish development preview"
+          git push origin HEAD:main
