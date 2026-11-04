@@ -684,6 +684,59 @@ resetForm=function(){
  el("newFeeModel").value="unconfigured";
  el("newAccountFields").hidden=true;
 };
+
+window.MorrowVanguardBridge={
+ accountId:()=>el("importAccount").value||"default",
+ existing:()=>transactions.map(x=>({...x})),
+ snapshot:(accountId,ticker)=>{const h=holdings.find(h=>h.accountId===accountId&&h.ticker===ticker);return baselines[h?.id]?.snapshotDate||epoch||today();},
+ commit(report,selected,mode){
+  const accountId=el("importAccount").value||"default",rebuild=mode==="rebuild";
+  const ordered=["deposit","transfer_in","buy","sell","interest","dividend","fee","withdrawal"];
+  const records=selected.map(r=>({...r,id:uid(),accountId,source:"Vanguard UK",feePaidFrom:"account"})).sort((a,b)=>a.date.localeCompare(b.date)||ordered.indexOf(a.type)-ordered.indexOf(b.type));
+  if(!records.length)throw Error("No transactions selected.");
+  const key=t=>[t.date,t.type,t.ticker||"",numeric(t.amount).toFixed(2),numeric(t.units).toFixed(6),accountId].join("|");
+  const unique=new Set();
+  for(const t of records){const signature=key(t);if(unique.has(signature))throw Error("Identical selected transactions found. Uncheck duplicates before importing.");unique.add(signature);}
+  if(rebuild){
+   if(!report.cashBalanced)throw Error("Statement cash totals do not reconcile.");
+   if(report.items.some(t=>t.warning&&t.type!=="transfer_in"))throw Error("Unmatched investment trades must be reviewed before rebuilding.");
+   const cash=report.openingCash+records.reduce((sum,t)=>sum+signedCash(t),0);
+   if(Math.abs(cash-report.closingCash)>0.04)throw Error("Cash mismatch: the selected rows give "+pounds(cash)+" versus Vanguard's "+pounds(report.closingCash)+". Select missing cash rows and try again.");
+   if(!confirm("Replace every holding and transaction in '"+getAccount(accountId).name+"' with this Vanguard history? A full backup will be downloaded first. Other accounts will not change."))return false;
+   downloadBackup();
+   const account=getAccount(accountId),removed=new Set(holdings.filter(h=>h.accountId===accountId).map(h=>h.id));
+   holdings=holdings.filter(h=>h.accountId!==accountId);
+   transactions=transactions.filter(t=>t.accountId!==accountId);
+   for(const id of removed)delete baselines[id];
+   account.provider="Vanguard";account.openingCash=report.openingCash;
+   if(account.kind==="General account")account.kind="Stocks & Shares ISA";
+   if(account.feeModel==="unconfigured")account.feeModel="vanguard-self";
+   const tickers=new Set(records.filter(t=>t.ticker&&["buy","sell","transfer_in"].includes(t.type)).map(t=>t.ticker));
+   for(const ticker of tickers){
+    const trades=records.filter(t=>t.ticker===ticker);
+    const newest=trades[trades.length-1],id=uid();
+    const h={id,accountId,ticker,name:ticker==="VUAG"?"Vanguard S&P 500 UCITS ETF (Accumulating)":ticker,capital:0,accountValue:0,incomeEarned:0,units:0,buy:0,price:newest.price||0,quoteDate:newest.date,notes:"Rebuilt from Vanguard report; verify current market value",nativeCurrency:"GBP",valuationMode:ticker==="VUAG"?"market":"snapshot"};
+    holdings.push(h);baselines[id]={...h,snapshotDate:"1970-01-01"};
+    trades.forEach(t=>t.holdingId=id);
+   }
+   records.forEach(t=>t.historical=false);
+  }else{
+   for(const t of records){
+    const h=holdings.find(h=>h.accountId===accountId&&h.ticker===t.ticker);
+    t.holdingId=h?.id||"";
+    if(t.type==="transfer_in"||t.date<=(baselines[h?.id]?.snapshotDate||epoch||today())||["buy","sell"].includes(t.type)&&!h)t.historical=true;
+   }
+   const existingKeys=new Set(transactions.map(key));
+   if(records.some(t=>existingKeys.has(key(t))))throw Error("One or more selected records already exist. Uncheck duplicates before importing.");
+  }
+  transactions.push(...records);
+  saveTransactions();
+  refreshAccountOptions();
+  if(rebuild&&records.some(t=>t.ticker==="VUAG"))refreshPortfolioPrices();
+  return true;
+ }
+};
+
 showView("investments");
 refreshAccountOptions();
 renderV13();
