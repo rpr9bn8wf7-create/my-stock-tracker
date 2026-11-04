@@ -114,6 +114,7 @@ canvas{display:block;width:100%;height:230px}
 .stress-value{font-weight:750}
 @media(max-width:700px){.journey-metrics{grid-template-columns:1fr}.scenario-grid{grid-template-columns:1fr}.journey-chart canvas{height:220px}}
 </style>
+<link rel="stylesheet" href="morrow-v13.css">
 </head>
 <body>
 <div class="shell">
@@ -121,6 +122,8 @@ canvas{display:block;width:100%;height:230px}
   <a class="brand" href="#" onclick="showView('home');return false" aria-label="Morrow home">morrow<span>.</span></a>
   <nav class="nav" aria-label="Main navigation">
     <button data-view="investments" onclick="showView('investments')">Investments</button>
+    <button data-view="transactions" onclick="showView('transactions')">Transactions</button>
+    <button data-view="fees" onclick="showView('fees')">Costs &amp; fees</button>
     <button data-view="briefing" onclick="showView('briefing')">Daily briefing</button>
     <button data-view="future" onclick="showView('future')">Financial future</button>
   </nav>
@@ -167,44 +170,108 @@ canvas{display:block;width:100%;height:230px}
       <p class="field-hint">Your original investment records are not changed by this display preference.</p>
     </section></div>
   <div class="metrics">
-    <div class="metric"><small>Portfolio value</small><div class="value" id="total">£0.00</div></div>
+    <div class="metric"><small>Portfolio value · holdings + account cash</small><div class="value" id="total">£0.00</div></div>
     <div class="metric"><small>Total invested</small><div class="value" id="invested">£0.00</div></div>
     <div class="metric"><small>Gain / loss</small><div class="value" id="profit">£0.00</div><div id="percent" class="meta">0.00%</div></div>
   </div>
-  <section class="panel">
-    <h2 id="formTitle">Add an investment</h2>
-    <form id="holdingForm">
-      <input type="hidden" id="editId">
-      <div class="form-grid">
-        <div class="search-wrap"><label for="ticker">Find an investment</label><input id="ticker" placeholder="Search company or ticker, e.g. Apple or VUAG" autocomplete="off" required aria-autocomplete="list" aria-controls="tickerSuggestions"><div id="tickerSuggestions" class="suggestions" role="listbox" hidden></div><div id="instrumentMeta" class="instrument-meta">Search by company name or ticker symbol.</div></div>
-        <div><label for="name">Investment name</label><input id="name" placeholder="Selected investment name" required></div>
-        <div><label for="capital">Total amount invested (£)</label><input id="capital" type="number" min="0" step="any" placeholder="e.g. 10,000.00" required><div class="field-hint">Your net contributions to date, after any withdrawals.</div></div>
-        <div><label for="accountValue">Current account value (£)</label><input id="accountValue" type="number" min="0" step="any" placeholder="e.g. 12,450.00" required><div class="field-hint">From your investment provider dashboard.</div></div>
-        <div><label for="units">Number of shares / units (optional)</label><input id="units" type="number" min="0" step="any" placeholder="e.g. 25"></div>
-        <div><label for="buy">Average purchase price per unit (optional)</label><input id="buy" type="number" min="0" step="any" placeholder="e.g. 85.50"></div>
-        <div><label for="price">Latest price per unit (optional)</label><input id="price" type="number" min="0" step="any" placeholder="e.g. 92.10"></div>
-        <div><label for="quoteDate">Date of latest price</label><input id="quoteDate" type="date"></div>
-        <div><label for="incomeEarned">Income received to date (optional, £)</label><input id="incomeEarned" type="number" min="0" step="any" placeholder="e.g. 150.00"><div class="field-hint">Include income received, not dividends already reinvested.</div></div>
+
+  <div class="portfolio-lower-metrics">
+    <div class="metric"><small>Income recorded</small><div class="value" id="v13Income">£0.00</div><div class="meta">Cash income and prior distributions</div></div>
+    <div class="metric"><small>Actual fees recorded</small><div class="value" id="v13Fees">£0.00</div><div class="meta">Estimates are shown separately in Costs &amp; fees</div></div>
+  </div>
+  <section class="panel"><h2>Portfolio breakdown</h2>
+    <div class="portfolio-breakdown"><div class="portfolio-donut" id="portfolioDonut"><div class="donut-center"><strong id="donutValue">£0.00</strong><span class="meta">Portfolio value</span></div></div>
+    <div><div class="portfolio-legend-row"><span><i class="legend-chip" style="background:var(--orange)"></i>Net capital contributed</span><strong id="donutCapital">£0.00</strong></div>
+      <div class="portfolio-legend-row"><span><i class="legend-chip" style="background:var(--green)"></i>Value above / below contributions</span><strong id="donutGrowth">£0.00</strong></div>
+      <div class="portfolio-legend-row"><span>Account cash (included in value)</span><strong id="donutCash">£0.00</strong></div>
+      <p class="ledger-note">The chart compares contributed capital against portfolio value. Losses are shown numerically rather than as a negative donut slice. Income paid outside your accounts is reported separately.</p></div></div>
+  </section>
+  <div class="v13-toolbar"><div><h2 style="margin:0">Your holdings <span class="v13-pill" id="holdingsCount">0</span></h2><p class="meta">Your investments at a glance.</p></div>
+    <div class="portfolio-actions"><button type="button" class="primary" id="openHoldingModal">+ New investment</button><button type="button" class="secondary" id="openImportModal">Import CSV</button><button type="button" class="secondary" id="openTransactionFromInvestments">+ Transaction</button></div></div>
+  <div class="v13-status warning" id="v13CashWarning" role="status" hidden></div>
+  <div class="v13-modal" id="holdingModal" hidden role="dialog" aria-modal="true" aria-labelledby="formTitle"><div class="v13-dialog">
+    <div class="v13-dialog-header"><div><div class="eyebrow">Investment setup</div><h2 id="formTitle">Add an investment</h2></div><button type="button" class="v13-close" id="closeHoldingModal" aria-label="Close">×</button></div>
+    <div class="v13-stepper" aria-label="Investment steps"><button type="button" data-step-button="1">1 · Investment</button><button type="button" data-step-button="2">2 · Details</button><button type="button" data-step-button="3">3 · Fees &amp; account</button><button type="button" data-step-button="4">4 · Review</button></div>
+    <form id="holdingForm"><input type="hidden" id="editId">
+      <div class="wizard-page" data-wizard-step="1"><h3>Find an investment</h3><p class="v13-plain">Search by name or ticker, or enter the information yourself.</p>
+        <div class="search-wrap"><label for="ticker">Ticker or investment name</label><input id="ticker" placeholder="e.g. VUAG or Apple" autocomplete="off" required aria-autocomplete="list" aria-controls="tickerSuggestions"><div id="tickerSuggestions" class="suggestions" role="listbox" hidden></div><div id="instrumentMeta" class="instrument-meta">Search by company name or ticker symbol.</div></div>
+        <label for="name">Investment name</label><input id="name" placeholder="Name of your stock, fund or ETF" required>
       </div>
-      <label for="notes">Notes (optional)</label><textarea id="notes" rows="2" placeholder="Account, investment notes..."></textarea>
-      <div class="actions"><button type="submit" class="primary" id="saveButton">Add investment</button><button type="button" class="secondary" id="cancelButton" hidden>Cancel edit</button></div>
+      <div class="wizard-page" data-wizard-step="2" hidden><h3>Your starting snapshot</h3><p class="v13-plain">Enter today's figures for this holding. Later transactions can be recorded or imported without recalculating the starting amounts.</p>
+        <div class="form-grid">
+          <div><label for="capital">Capital invested so far (£)</label><input id="capital" type="number" min="0" step="any" required placeholder="e.g. 10,000.00"><div class="field-hint">Starting contribution / holding cost basis.</div></div>
+          <div><label for="accountValue">Current investment value (£)</label><input id="accountValue" type="number" min="0" step="any" required placeholder="e.g. 12,450.00"><div class="field-hint">Value of this holding — not the entire provider account.</div></div>
+          <div><label for="units">Number of shares / units (optional)</label><input id="units" type="number" min="0" step="any" placeholder="e.g. 100"></div>
+          <div><label for="buy">Average purchase price per unit (optional)</label><input id="buy" type="number" min="0" step="any" placeholder="e.g. 90.10"></div>
+          <div><label for="price">Latest price per unit (optional)</label><input id="price" type="number" min="0" step="any" placeholder="e.g. 110.38"></div>
+          <div><label for="quoteDate">Date of latest price</label><input id="quoteDate" type="date"></div>
+          <div><label for="incomeEarned">Cash income paid out to date (£, optional)</label><input id="incomeEarned" type="number" min="0" step="any" placeholder="e.g. 150.00"><div class="field-hint">Do not include dividends already reinvested.</div></div>
+        </div>
+        <div class="v13-preview"><label class="v13-check"><input type="checkbox" id="autoValue"> Calculate holding value from units × latest price (GBP-priced holdings only)</label><p class="field-hint">Leave this off for investments priced in another currency or when your provider displays a different valuation.</p></div>
+        <label for="notes">Notes (optional)</label><textarea id="notes" rows="2" placeholder="Investment notes"></textarea>
+      </div>
+      <div class="wizard-page" data-wizard-step="3" hidden><h3>Investment account and costs</h3>
+        <label for="holdingAccount">Investment account</label><select id="holdingAccount"></select>
+        <div class="v13-preview" id="newAccountFields" hidden><h3>Create a provider account</h3>
+          <label for="newAccountName">Account name</label><input id="newAccountName" placeholder="e.g. My Vanguard ISA">
+          <div class="form-grid"><div><label for="newProvider">Provider</label><select id="newProvider"><option>Other</option><option>Vanguard</option><option>Trading 212</option><option>Hargreaves Lansdown</option><option>AJ Bell</option><option>Freetrade</option><option>Interactive Investor</option><option>InvestEngine</option><option>Fidelity</option><option>Interactive Brokers</option></select></div>
+          <div><label for="newAccountKind">Account type</label><select id="newAccountKind"><option>Stocks &amp; Shares ISA</option><option>General account</option><option>Self-invested pension</option><option>Junior ISA</option><option>Managed ISA</option></select></div></div>
+          <label for="newFeeModel">Account fee template</label><select id="newFeeModel"><option value="unconfigured">Not configured yet</option><option value="vanguard-self">Vanguard UK self-managed</option><option value="vanguard-junior">Vanguard UK Junior ISA</option><option value="vanguard-managed">Vanguard UK managed</option><option value="custom">Custom (edit in Costs &amp; fees)</option></select>
+        </div>
+        <div class="v13-preview" id="wizardFeeText">You can configure platform fees in Costs &amp; fees.</div>
+        <label for="holdingOcf">Fund ongoing charge (OCF, annual %, optional)</label><input id="holdingOcf" type="number" min="0" max="10" step="any" placeholder="e.g. 0.07"><p class="field-hint">Typically already reflected in fund prices. Shown as an indicative disclosure, not a second cash deduction.</p>
+      </div>
+      <div class="wizard-page" data-wizard-step="4" hidden><h3>Review the investment</h3><p class="v13-plain">Check your starting figures before saving. Future activity can be imported or added manually.</p><div class="v13-review" id="wizardReview"></div><div class="v13-status">Once you record transactions for a holding, use the activity ledger for subsequent changes to avoid double counting.</div></div>
+      <div class="wizard-footer"><button type="button" class="secondary" id="cancelButton" hidden>Cancel edit</button><button type="button" class="secondary" id="wizardBack" hidden>Back</button><button type="button" class="primary" id="wizardNext">Next →</button><button type="submit" class="primary" id="saveButton" hidden>Add investment</button></div>
     </form>
-  </section>
+  </div></div>
   <section class="panel">
-    <h2>Your holdings</h2>
+    <div class="holdings-title"><h2>Your holdings</h2><span class="v13-pill">Select Details &amp; activity to explore</span></div>
     <div id="quoteStatus" class="quote-status">Prices update automatically when the latest daily prices are available.</div>
-    <div id="holdings"><p class="empty">No investments added yet. Add your first investment above.</p></div>
+    <div id="holdings"><p class="empty">Add an investment or import a CSV.</p></div>
+  </section>
+  <section class="panel" id="holdingDetail" hidden>
+    <div class="v13-toolbar"><h2 id="detailName">Holding details</h2><button type="button" class="secondary" id="closeDetail">Close details</button></div>
+    <div class="v13-stat"><div class="metric"><small>Current value</small><div class="value" id="detailValue">—</div></div><div class="metric"><small>Holding gain / loss</small><div class="value" id="detailGain">—</div></div><div class="metric"><small>Units</small><div class="value" id="detailUnits">—</div></div></div>
+    <div class="v13-review" style="margin-top:10px"><div>Cost basis<strong id="detailCost">—</strong></div><div>Latest unit price<strong id="detailPrice">—</strong></div><div>Account<strong id="detailAccount">—</strong></div><div>Fund ongoing charge<strong id="detailOcf">—</strong></div></div>
+    <div class="v13-toolbar" style="margin-top:18px"><h3>Activity history</h3><button type="button" class="secondary" id="detailJourney">See Investment Journey →</button></div><div id="detailTransactions"></div>
   </section>
   <section class="panel">
-    <h2>Keep a backup</h2>
-    <p class="meta">Your holdings are saved in this browser on this device. Export a backup regularly so you can restore them if needed.</p>
-    <div class="actions"><button id="exportButton" class="secondary">Export backup</button></div>
+    <h2>Back up your Morrow data</h2>
+    <p class="meta">Your holdings, accounts, transactions and fee settings are stored in this browser. The full backup includes all of them. Download one regularly.</p>
+    <div class="actions"><button id="exportButton" class="secondary">Download full backup (JSON)</button></div>
     <label for="importFile">Restore from backup</label><input id="importFile" type="file" accept=".json,application/json">
   </section>
-  <p class="disclaimer">VUAG uses an end-of-day reference price from Newton Analytics when refreshed. Other holdings can be updated manually. Prices are informational only, not investment advice.</p>
+  <p class="disclaimer" id="v13Disclaimer">Values are informational only.</p><p class="disclaimer">VUAG uses an end-of-day price reference when refreshed. Other holdings may require manual valuations. Nothing here is investment advice.</p>
 </section>
 
 
+
+<section class="view" id="transactions" hidden>
+  <button class="back-link" onclick="showView('investments')">← Back to investments</button>
+  <div class="page-head"><div><div class="eyebrow">Your investment activity</div><h1>Transactions</h1><p>Add deposits, withdrawals, trades, dividends and fees — or import them in bulk.</p></div></div>
+  <div class="v13-toolbar"><div class="portfolio-actions"><button type="button" class="primary" id="openTransactionModal">+ Add transaction</button><button type="button" class="secondary" id="openImportFromTransactions">Import CSV</button></div></div>
+  <div class="v13-stat"><div class="metric"><small>Transactions recorded</small><div class="value" id="v13TxCount">0</div></div><div class="metric"><small>Actual recorded fees</small><div class="value" id="v13TxFees">£0.00</div></div><div class="metric"><small>Account cash</small><div class="value" id="v13TxCash">£0.00</div></div></div>
+  <div class="note"><strong>How money moves:</strong> a deposit adds account cash, a purchase moves cash into an investment, and a sale converts units back to cash. Account fees are counted once; they are not deducted again when already reflected in the portfolio value.</div>
+  <section class="panel"><h2>Activity history</h2><div id="transactionList"></div></section>
+</section>
+<section class="view" id="fees" hidden>
+  <button class="back-link" onclick="showView('investments')">← Back to investments</button>
+  <div class="page-head"><div><div class="eyebrow">Your costs</div><h1>Accounts &amp; fees</h1><p>Compare recorded charges with indicative ongoing provider costs.</p></div></div>
+  <div class="v13-stat"><div class="metric"><small>Actually recorded fees</small><div class="value" id="feesActual">£0.00</div></div><div class="metric"><small>Estimated annual platform fees</small><div class="value" id="feesEstimated">£0.00</div></div><div class="metric"><small>Illustrative annual fund OCF</small><div class="value" id="feesFundOcf">£0.00</div></div></div>
+  <div class="note"><strong>Avoid double counting.</strong> Fund OCF is normally embedded in prices. Account fees already deducted from cash are not deducted a second time. Estimated charges are not added to recorded transactions.</div>
+  <section class="panel"><div class="v13-toolbar"><h2>Investment accounts</h2><button type="button" class="primary" id="newAccountButton">+ New account</button></div><div id="accountsList"></div></section>
+  <section class="panel" id="accountEditor" hidden><h2>Account details &amp; fee settings</h2><form id="accountForm"><input type="hidden" id="accountEditId">
+    <div class="form-grid"><div><label for="accountName">Account name</label><input id="accountName" required></div><div><label for="accountProvider">Provider</label><select id="accountProvider"><option>Other</option><option>Vanguard</option><option>Trading 212</option><option>Hargreaves Lansdown</option><option>AJ Bell</option><option>Freetrade</option><option>Interactive Investor</option><option>InvestEngine</option><option>Fidelity</option><option>Interactive Brokers</option></select></div>
+    <div><label for="accountKind">Account type</label><select id="accountKind"><option>Stocks &amp; Shares ISA</option><option>General account</option><option>Self-invested pension</option><option>Junior ISA</option><option>Managed ISA</option></select></div>
+    <div><label for="accountFeeModel">Platform fee template</label><select id="accountFeeModel"><option value="unconfigured">Not configured</option><option value="vanguard-self">Vanguard UK self-managed</option><option value="vanguard-junior">Vanguard UK Junior ISA</option><option value="vanguard-managed">Vanguard UK managed</option><option value="custom">Custom fee rules</option></select></div>
+    <div><label for="accountOpeningCash">Starting account cash balance (£)</label><input id="accountOpeningCash" type="number" step="any" value="0"><div class="field-hint">Optional. Reconcile cash from partial statement imports.</div></div></div>
+    <div class="v13-preview" id="customFees" hidden><h3>Custom annual platform charges</h3><div class="form-grid"><div><label for="accountFixed">Fixed annual fee (£)</label><input id="accountFixed" type="number" min="0" step="any" value="0"></div><div><label for="accountRate">Percentage of invested assets annually (%)</label><input id="accountRate" type="number" min="0" step="any" value="0"></div><div><label for="accountCap">Annual cap (£; 0 = no cap)</label><input id="accountCap" type="number" min="0" step="any" value="0"></div></div></div>
+    <div class="actions"><button type="submit" class="primary">Save account</button><button type="button" class="secondary" id="cancelAccountEdit">Cancel</button></div>
+  </form></section>
+  <p class="disclaimer">Vanguard UK self-managed illustrative fee template: £4/month below £32,000, otherwise 0.15% annually, max £375. Other arrangements and mixed account combinations may differ; confirm the latest terms.</p>
+  <p class="disclaimer"><a href="https://www.vanguardinvestor.co.uk/what-we-offer/fees-explained" target="_blank" rel="noopener noreferrer" style="color:var(--orange)">Vanguard UK official fees</a></p>
+</section>
 <section class="view" id="journey" hidden>
  <button class="back-link" onclick="showView('investments')">← Back to investments</button>
  <div class="journey-top"><div><div class="eyebrow">Your investment journey</div><h1 id="journeyName">Investment</h1><p class="intro" id="journeySubtitle">Past performance and possible future scenarios.</p></div></div>
@@ -279,6 +346,46 @@ canvas{display:block;width:100%;height:230px}
   <p class="disclaimer">This calculator is for illustration and education, not financial advice. It assumes a steady annual growth rate, compounded monthly, with contributions made at the end of each month. Real investment returns vary and can be negative. It does not include fees, taxes, inflation or changes in contribution amounts. You could get back less than you invest.</p>
 </section>
 </main>
+
+<div class="v13-modal" id="transactionModal" hidden role="dialog" aria-modal="true" aria-labelledby="transactionModalTitle"><div class="v13-dialog">
+  <div class="v13-dialog-header"><div><div class="eyebrow">Update your records</div><h2 id="transactionModalTitle">Add a transaction</h2></div><button type="button" id="closeTransactionModal" class="v13-close" aria-label="Close">×</button></div>
+  <form id="transactionForm"><div class="form-grid">
+    <div><label for="transactionDate">Date</label><input id="transactionDate" type="date" required></div>
+    <div><label for="transactionType">Activity</label><select id="transactionType"><option value="deposit">Deposit</option><option value="withdrawal">Withdrawal</option><option value="buy">Purchase</option><option value="sell">Sale</option><option value="dividend">Dividend / distribution</option><option value="interest">Interest received</option><option value="fee">Account / trading fee</option></select></div>
+    <div><label for="transactionAccount">Account</label><select id="transactionAccount"></select></div>
+    <div><label for="transactionAmount">Amount (GBP)</label><input id="transactionAmount" type="number" min="0.01" step="any" required></div>
+    <div id="transactionHoldingGroup" hidden><label for="transactionHolding">Investment</label><select id="transactionHolding"></select></div>
+    <div id="transactionUnitsGroup" hidden><label for="transactionUnits">Units bought or sold</label><input id="transactionUnits" type="number" min="0" step="any"><label for="transactionPrice">Price per unit (optional)</label><input id="transactionPrice" type="number" min="0" step="any"></div>
+    <div id="feePaidFromGroup" hidden><label for="feePaidFrom">How was the fee paid?</label><select id="feePaidFrom"><option value="account">Deducted from account cash</option><option value="external">Paid externally</option></select></div></div>
+    <label for="transactionNote">Notes (optional)</label><input id="transactionNote" placeholder="Reference or description">
+    <p class="v13-plain">Record deposits separately from purchases. Buying units transfers money from account cash to the investment.</p><div class="wizard-footer"><button type="submit" class="primary">Save transaction</button></div>
+  </form>
+</div></div>
+<div class="v13-modal" id="importModal" hidden role="dialog" aria-modal="true" aria-labelledby="importModalTitle"><div class="v13-dialog wide">
+  <div class="v13-dialog-header"><div><div class="eyebrow">Bulk update</div><h2 id="importModalTitle">Import transactions from CSV</h2></div><button type="button" id="closeImportModal" class="v13-close" aria-label="Close">×</button></div>
+  <p class="v13-plain">Imports are processed locally in your browser. Provider formats vary, so check the column mapping and review every row. Export Excel or PDF statements to CSV before importing.</p>
+  <div class="form-grid"><div><label for="importProvider">Provider</label><select id="importProvider"><option value="auto">Auto-detect / generic CSV</option><option value="vanguard">Vanguard UK</option><option value="t212">Trading 212</option><option value="hl">Hargreaves Lansdown</option><option value="ajbell">AJ Bell</option><option value="freetrade">Freetrade</option><option value="other">Other provider</option></select></div>
+    <div><label for="importAccount">Investment account</label><select id="importAccount"></select></div></div>
+  <div class="v13-file"><label for="importFileV13">Select a CSV file (maximum 500 transactions)</label><input type="file" id="importFileV13" accept=".csv,.txt,text/csv,text/plain"></div>
+  <div class="v13-status" id="importStatus">Choose your CSV statement to begin.</div>
+  <div id="importMapping" hidden><h3>Confirm the columns</h3><p class="v13-plain">Date and type are required. Trade rows also require a ticker and quantity. Amounts are recorded in GBP.</p>
+    <div class="v13-input-map">
+      <div><label for="mapDate">Date</label><select id="mapDate" data-map-field="date"></select></div>
+      <div><label for="mapType">Transaction type</label><select id="mapType" data-map-field="type"></select></div>
+      <div><label for="mapAmount">Cash amount</label><select id="mapAmount" data-map-field="amount"></select></div>
+      <div><label for="mapTicker">Ticker / instrument</label><select id="mapTicker" data-map-field="ticker"></select></div>
+      <div><label for="mapUnits">Units / shares</label><select id="mapUnits" data-map-field="units"></select></div>
+      <div><label for="mapPrice">Unit price</label><select id="mapPrice" data-map-field="price"></select></div>
+      <div><label for="mapCurrency">Cash currency</label><select id="mapCurrency" data-map-field="currency"></select></div>
+      <div><label for="mapDescription">Description</label><select id="mapDescription" data-map-field="description"></select></div>
+      <div><label for="mapReference">Transaction ID</label><select id="mapReference" data-map-field="reference"></select></div>
+    </div><div class="actions"><button type="button" class="secondary" id="mapImportButton">Preview transactions</button></div>
+  </div>
+  <div id="importReview" hidden><h3>Review imported transactions</h3><p class="v13-plain" id="importSummary"></p>
+    <div class="v13-table-wrap"><table class="v13-table"><thead><tr><th>Include</th><th>Date</th><th>Type</th><th>Investment</th><th>Units</th><th>Amount</th><th>Review</th></tr></thead><tbody id="importPreviewBody"></tbody></table></div>
+    <div class="wizard-footer"><button type="button" class="primary" id="confirmImportButton">Confirm selected transactions</button></div>
+  </div>
+</div></div>
 <div class="footer">morrow<span style="color:var(--orange)">.</span> &nbsp; YOUR MONEY. TOMORROW, EXPLAINED.</div>
 </div>
 <script>
@@ -305,7 +412,7 @@ async function updateDisplayCurrency(){
    displayRate=Number(result.rate);
    status.textContent="1 GBP = "+new Intl.NumberFormat("en-GB",{style:"currency",currency:displayCurrency}).format(displayRate)+" · "+result.provider+" · rate retrieved "+new Date(result.retrievedAt).toLocaleString("en-GB");
   }catch(error){
-   displayCurrency="GBP";localStorage.setItem(currencyKey,"GBP");$("displayCurrency").value="GBP";
+   displayCurrency="GBP";localStorage.setItem(currencyKey,"GBP");
    status.textContent="Couldn't retrieve the exchange rate, so Morrow has kept your display currency in GBP. "+error.message;
   }
  }else status.textContent="Portfolio figures are displayed in pounds sterling.";
@@ -386,7 +493,7 @@ async function refreshPortfolioPrices(){
   const result=await response.json();
   if(result.status!=="200"||!Array.isArray(result.data)||!result.data.length||!Number.isFinite(Number(result.data[0][1])))throw new Error(result.statusMessage||"No price was returned.");
   const price=Number(result.data[0][1]),date=new Date(Number(result.data[0][0])*1000).toISOString().slice(0,10);
-  matches.forEach(h=>{h.price=price;h.quoteDate=date;h.quoteSource="Newton Analytics · end-of-day";});
+  matches.forEach(h=>{h.price=price;h.quoteDate=date;h.quoteSource="Newton Analytics · end-of-day";if(h.valuationMode==="market"&&Number(h.units)>0&&(h.nativeCurrency||"GBP")==="GBP")h.accountValue=h.units*price;});
   localStorage.setItem(storageKey,JSON.stringify(holdings));
   render();
   status.textContent="VUAG updated to "+money(price)+" per unit · daily price dated "+date+".";
@@ -396,7 +503,7 @@ async function refreshPortfolioPrices(){
 }
 $("holdingForm").addEventListener("submit",e=>{
  e.preventDefault();const id=$("editId").value||(Date.now().toString()+Math.random().toString(16).slice(2));
- const item={id,ticker:$("ticker").value.trim().toUpperCase(),name:$("name").value.trim(),capital:number($("capital").value),accountValue:number($("accountValue").value),incomeEarned:number($("incomeEarned").value),units:number($("units").value),buy:number($("buy").value),price:number($("price").value),quoteDate:$("quoteDate").value,notes:$("notes").value.trim(),exchange:selectedInstrument?.exchange||"",micCode:selectedInstrument?.micCode||"",nativeCurrency:selectedInstrument?.currency||"GBP",instrumentType:selectedInstrument?.instrumentType||"Manual entry"};
+ const item={id,accountId:resolveHoldingAccount(),ocf:$("holdingOcf").value===""?"":number($("holdingOcf").value),valuationMode:$("autoValue").checked?"market":"snapshot",ticker:$("ticker").value.trim().toUpperCase(),name:$("name").value.trim(),capital:number($("capital").value),accountValue:$("autoValue").checked?number($("units").value)*number($("price").value):number($("accountValue").value),incomeEarned:number($("incomeEarned").value),units:number($("units").value),buy:number($("buy").value),price:number($("price").value),quoteDate:$("quoteDate").value,notes:$("notes").value.trim(),exchange:selectedInstrument?.exchange||"",micCode:selectedInstrument?.micCode||"",nativeCurrency:selectedInstrument?.currency||"GBP",instrumentType:selectedInstrument?.instrumentType||"Manual entry"};
  const index=holdings.findIndex(h=>h.id===id);if(index>=0){item.quoteSource=holdings[index].quoteSource;item.journeyMonthly=holdings[index].journeyMonthly;holdings[index]=item;}else holdings.push(item);
  resetForm();save();refreshPortfolioPrices();
 });
@@ -531,5 +638,6 @@ document.addEventListener("click",e=>{if(!currencyPopover.hidden&&!currencyPopov
 render();calculateProjection();updateDisplayCurrency();refreshPortfolioPrices();
 setInterval(refreshPortfolioPrices,6*60*60*1000);
 </script>
+<script src="morrow-v13.js"></script>
 </body>
 </html>
