@@ -372,11 +372,20 @@ canvas{display:block;width:100%;height:230px}
   </form>
 </div></div>
 <div class="v13-modal" id="importModal" hidden role="dialog" aria-modal="true" aria-labelledby="importModalTitle"><div class="v13-dialog wide">
-  <div class="v13-dialog-header"><div><div class="eyebrow">Bulk update</div><h2 id="importModalTitle">Import transactions from CSV</h2></div><button type="button" id="closeImportModal" class="v13-close" aria-label="Close">×</button></div>
-  <p class="v13-plain">Imports are processed locally in your browser. Provider formats vary, so check the column mapping and review every row. Export Excel or PDF statements to CSV before importing.</p>
+  <div class="v13-dialog-header"><div><div class="eyebrow">Bulk update</div><h2 id="importModalTitle">Import Vanguard Excel or CSV</h2></div><button type="button" id="closeImportModal" class="v13-close" aria-label="Close">×</button></div>
+  <p class="v13-plain">Vanguard UK Client Transactions Listing workbooks (.xlsx / .xls) are recognised automatically. Other providers can use CSV with column mapping. The file is processed in your browser and is not uploaded to Morrow.</p>
   <div class="form-grid"><div><label for="importProvider">Provider</label><select id="importProvider"><option value="auto">Auto-detect / generic CSV</option><option value="vanguard">Vanguard UK</option><option value="t212">Trading 212</option><option value="hl">Hargreaves Lansdown</option><option value="ajbell">AJ Bell</option><option value="freetrade">Freetrade</option><option value="other">Other provider</option></select></div>
     <div><label for="importAccount">Investment account</label><select id="importAccount"></select></div></div>
-  <div class="v13-file"><label for="importFileV13">Select a CSV file (maximum 500 transactions)</label><input type="file" id="importFileV13" accept=".csv,.txt,text/csv,text/plain"></div>
+  <div class="v13-file"><label for="importFileV13">Select Vanguard Excel (.xlsx/.xls) or CSV (up to 500 records)</label><input type="file" id="importFileV13" accept=".csv,.txt,.xlsx,.xls,text/csv,text/plain,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></div>
+  <div id="vanguardControls" hidden class="v13-preview">
+    <h3>Vanguard UK report identified</h3>
+    <p class="v13-plain" id="vanguardReportStatus"></p>
+    <label for="vanguardMode">How should Morrow use this statement?</label>
+    <select id="vanguardMode"><option value="snapshot">Update my existing portfolio — older transactions are references only</option><option value="rebuild">Build investment history from the beginning — replace records in this account</option></select>
+    <p class="field-hint">Choose “Build investment history” for a complete statement. Morrow will download a full backup and ask before replacing this account's existing records.</p>
+    <div class="v13-status" id="vanguardReconciliation"></div>
+    <div class="actions"><button type="button" class="secondary" id="reviewVanguard">Review Vanguard transactions</button></div>
+  </div>
   <div class="v13-status" id="importStatus">Choose your CSV statement to begin.</div>
   <div id="importMapping" hidden><h3>Confirm the columns</h3><p class="v13-plain">Date and type are required. Trade rows also require a ticker and quantity. Amounts are recorded in GBP.</p>
     <div class="v13-input-map">
@@ -648,6 +657,8 @@ document.addEventListener("click",e=>{if(!currencyPopover.hidden&&!currencyPopov
 render();calculateProjection();updateDisplayCurrency();refreshPortfolioPrices();
 setInterval(refreshPortfolioPrices,6*60*60*1000);
 </script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script src="morrow-vanguard.js"></script>
 <script src="morrow-v13.js"></script>
 </body>
 </html>
