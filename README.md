@@ -25,13 +25,17 @@ The `main` branch is the live 1.0 site. Versions 1.2 and 1.3 are being developed
 - Starting holding snapshots are preserved separately from later activity. Purchases/sales can recalculate units and cost basis from the snapshot rather than overwriting it repeatedly.
 - Holding details include current unit price rounded to two decimals, transaction history, Investment Journey shortcut and **Update current value** for reconciling imported activity with a provider's actual value.
 - CSV import is optional at onboarding and available thereafter. It accepts CSV (500 transactions / 4 MB per batch) with column mapping, review, duplicate warnings and historical-only records for rows on or before the starting snapshot.
+- **Vanguard UK report import:** original `.xlsx`/`.xls` Client Transactions Listing workbooks, and corresponding Numbers-exported multi-section CSV reports, are recognised without manual column mapping. The importer pairs cash-side and investment-side trades by type, quantity, amount and nearby settlement dates.
+- **History choice:** Vanguard imports offer an update-existing mode (old entries are references only) or full-history rebuild mode. Rebuild requires selected cash flows to reconcile with Vanguard's reported closing balance, confirms account-scoped replacement and downloads a full backup before changes.
+- **Ambiguous ledger rows:** unlabelled investment entries are flagged as possible transfers in and deliberately unchecked by default. Users must review them to avoid missing investment units. Unmatched trade rows block full-history rebuild.
+- **Workbook dependency:** Excel parsing uses SheetJS 0.20.3 loaded from the official SheetJS CDN. Files are read and parsed inside the browser; the spreadsheet contents are not sent to Morrow's Worker. For a future production release, vendor and audit the dependency instead of relying on a third-party runtime CDN.
 - Provider-account selection and editable fees. Vanguard UK fee estimates are offered for self-managed, Junior and managed plans; other providers can use custom fixed/percentage fees. Fund OCF is disclosed separately. Estimates do not generate fee transactions or affect the account balance.
 - Full JSON backup now includes holdings, accounts, baselines, transaction ledger and display-currency preference. Legacy holdings-only JSON can still be restored.
 
 ### Important limitations to test before release
 
-- CSV import uses a **generic header-mapping workflow**. Selecting a provider labels the source but does not imply that every proprietary export variation has been validated. Real provider sample files and date/decimal-format test coverage are needed.
-- Only CSV/text files are supported for transactions. XLSX and PDF statements are **not** parsed directly.
+- Non-Vanguard CSV imports still use a **generic header-mapping workflow**. Selecting other providers labels the source but does not imply that their proprietary exports have been validated. The Vanguard adapter was designed from a real 2026 UK report format, but additional Vanguard versions and account types still need validation.
+- Vanguard UK Client Transactions Listing XLSX/XLS files are supported. Other providers still require CSV column mapping; PDF statement parsing is **not** supported.
 - Importing a CSV covering dates before a holding's starting snapshot imports those rows as historical reference only; it does not reconstruct full history or silently replace current balances.
 - Current values for non-VUAG holdings may need manual updates from provider statements. A historical buy/sell ledger alone does not establish the current market price.
 - The portfolio's percentage return is a **simple net-contributions comparison**, not a time-weighted or money-weighted investment return. The Investment Journey historical VUAG series is price history, not historical total-account performance.
@@ -136,7 +140,7 @@ A separate calculator models the possible future value of savings and investment
 
 ## Technical overview
 
-- **Frontend:** `index.html`, with the Morrow 1.3 additions in `morrow-v13.js` and `morrow-v13.css`.
+- **Frontend:** `index.html`, with the Morrow 1.3 additions in `morrow-v13.js`, `morrow-v13.css`, `morrow-vanguard.js` and `morrow-vanguard-ui.js`.
 - **Hosting:** GitHub Pages.
 - **Backend:** Cloudflare Worker.
 - **Market data:** Newton Analytics for the VUAG reference-price feed; Twelve Data for supported symbol search, quotes and FX requests.
