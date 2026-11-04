@@ -9,8 +9,37 @@ Morrow is a personal investment tracker designed to make investing easier to und
 - **Morrow 1.0** — Original portfolio tracker.
 - **Morrow 1.1** — Investment Journey: historical VUAG performance, illustrative future scenarios and stress testing.
 - **Morrow 1.2 (in development)** — International portfolio foundations, including selectable display currency and currency-conversion support.
+- **Morrow 1.3 (development preview)** — Portfolio-first dashboard, cash accounting, transaction history, CSV import review and provider-fee estimates.
 
-The `main` branch is the live 1.0 site. Work on 1.2 is being developed on the `development` branch and published to the preview folder.
+The `main` branch is the live 1.0 site. Versions 1.2 and 1.3 are being developed on the `development` branch and published to the preview folder. `main` retains the original live app.
+
+## Morrow 1.3 — investment accounting and portfolio-first layout
+
+**Implementation status: development preview for hands-on testing, not production-ready.**
+
+### What changed
+
+- Investment holdings and portfolio totals are the first screen; the new-investment form opens in a four-step dialog.
+- Account cash, net contributions, portfolio value, income and recorded fees are shown separately, with a contributed-capital-versus-growth donut chart.
+- New Transactions page for deposits, withdrawals, purchases, sales, dividends, interest and fees.
+- Starting holding snapshots are preserved separately from later activity. Purchases/sales can recalculate units and cost basis from the snapshot rather than overwriting it repeatedly.
+- Holding details include current unit price rounded to two decimals, transaction history, Investment Journey shortcut and **Update current value** for reconciling imported activity with a provider's actual value.
+- CSV import is optional at onboarding and available thereafter. It accepts CSV (500 transactions / 4 MB per batch) with column mapping, review, duplicate warnings and historical-only records for rows on or before the starting snapshot.
+- Provider-account selection and editable fees. Vanguard UK fee estimates are offered for self-managed, Junior and managed plans; other providers can use custom fixed/percentage fees. Fund OCF is disclosed separately. Estimates do not generate fee transactions or affect the account balance.
+- Full JSON backup now includes holdings, accounts, baselines, transaction ledger and display-currency preference. Legacy holdings-only JSON can still be restored.
+
+### Important limitations to test before release
+
+- CSV import uses a **generic header-mapping workflow**. Selecting a provider labels the source but does not imply that every proprietary export variation has been validated. Real provider sample files and date/decimal-format test coverage are needed.
+- Only CSV/text files are supported for transactions. XLSX and PDF statements are **not** parsed directly.
+- Importing a CSV covering dates before a holding's starting snapshot imports those rows as historical reference only; it does not reconstruct full history or silently replace current balances.
+- Current values for non-VUAG holdings may need manual updates from provider statements. A historical buy/sell ledger alone does not establish the current market price.
+- The portfolio's percentage return is a **simple net-contributions comparison**, not a time-weighted or money-weighted investment return. The Investment Journey historical VUAG series is price history, not historical total-account performance.
+- The accounting engine currently assumes transactions and cash balances are recorded in **GBP**. Other currencies are rejected at CSV review; complete native-currency accounting and correct FX-cost-basis handling remain future work.
+- The account-fee estimates are illustrative and need testing against real provider rules and combinations of account types. Vanguard managed-account estimates include the 0.20% management fee, but fund OCF remains separately disclosed.
+- A clean provider export may include cash movements in a different structure from trades; make sure to import opening cash or deposits as appropriate to avoid negative cash balances. Morrow warns rather than hiding negative cash.
+- No automatic broker connection, server-side user database, authenticated sync or live automated fund reconciliation has been implemented.
+- Data is stored in localStorage. Back up regularly. The preview has passed script syntax and structural control checks, but not a full cross-browser test suite.
 
 ## Morrow 1.2 updates introduced so far
 
@@ -107,11 +136,11 @@ A separate calculator models the possible future value of savings and investment
 
 ## Technical overview
 
-- **Frontend:** HTML, CSS and JavaScript in `index.html`.
+- **Frontend:** `index.html`, with the Morrow 1.3 additions in `morrow-v13.js` and `morrow-v13.css`.
 - **Hosting:** GitHub Pages.
 - **Backend:** Cloudflare Worker.
 - **Market data:** Newton Analytics for the VUAG reference-price feed; Twelve Data for supported symbol search, quotes and FX requests.
-- **Browser storage:** local storage for holdings and the display-currency preference.
+- **Browser storage:** local storage for holdings, accounts, snapshot baselines, transactions and the display-currency preference.
 
 The Worker URL currently used by the app is:
 
@@ -136,7 +165,7 @@ The Twelve Data API key is stored as a Cloudflare Worker secret named `TWELVE_DA
 ## Development and preview
 
 - `main` — live Morrow 1.0 site.
-- `development` — ongoing development, including Morrow 1.2.
+- `development` — ongoing development, including Morrow 1.2 and 1.3.
 - GitHub Actions publishes the development branch into the `preview/` folder on `main`.
 
 Live site: https://rpr9bn8wf7-create.github.io/my-stock-tracker/
@@ -163,4 +192,4 @@ Morrow is intended to help users understand and track their own investments. It 
 
 ---
 
-*This README describes the development branch and the features implemented at the time of writing. It should be updated as Morrow 1.2 progresses.*
+*This README describes the development branch and features implemented in the Morrow 1.3 preview.*
