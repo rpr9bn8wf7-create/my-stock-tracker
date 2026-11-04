@@ -42,7 +42,7 @@ function signedCash(t){
 }
 function cashFor(id){return numeric(getAccount(id).openingCash)+transactions.filter(t=>!t.historical&&t.accountId===id).reduce((s,t)=>s+signedCash(t),0);}
 function snapshotInvested(){return Object.values(baselines).reduce((s,h)=>s+holdingCost(h),0);}
-function externalFlows(){return transactions.filter(t=>!t.historical).reduce((s,t)=>s+(t.type==="deposit"?numeric(t.amount):t.type==="withdrawal"?-numeric(t.amount):t.type==="fee"&&t.feePaidFrom==="external"?numeric(t.amount):0),0);}
+function externalFlows(){return transactions.filter(t=>!t.historical).reduce((s,t)=>s+((t.type==="deposit"||t.type==="transfer_in")?numeric(t.amount):t.type==="withdrawal"?-numeric(t.amount):t.type==="fee"&&t.feePaidFrom==="external"?numeric(t.amount):0),0);}
 function accountInvestedBalance(id){return holdings.filter(h=>(h.accountId||"default")===id).reduce((s,h)=>s+valuation(h),0);}
 function portfolioMetrics(){
  const invested=snapshotInvested()+accounts.reduce((s,a)=>s+numeric(a.openingCash),0)+externalFlows();
@@ -209,11 +209,11 @@ function recalculateHoldings(){
   const last=liveById.get(base.id);
   const h={...base,accountId:base.accountId||"default"};
   if(last){h.price=last.price;h.quoteDate=last.quoteDate;h.quoteSource=last.quoteSource;h.journeyMonthly=last.journeyMonthly;h.valuationMode=last.valuationMode||base.valuationMode;h.providerValue=last.providerValue;h.providerAnchorIds=last.providerAnchorIds;}
-  const events=transactions.filter(t=>!t.historical&&t.holdingId===h.id&&(t.type==="buy"||t.type==="sell")).sort((a,b)=>a.date.localeCompare(b.date)||a.id.localeCompare(b.id));
+  const events=transactions.filter(t=>!t.historical&&t.holdingId===h.id&&(["buy","sell","transfer_in"].includes(t.type))).sort((a,b)=>a.date.localeCompare(b.date)||a.id.localeCompare(b.id));
   let u=numeric(h.units),basis=holdingCost(h),value=holdingValue(h);
   for(const t of events){
    const q=numeric(t.units),amount=numeric(t.amount);
-   if(t.type==="buy"){u+=q;basis+=amount;value+=amount;}
+   if(t.type==="buy"||t.type==="transfer_in"){u+=q;basis+=amount;value+=amount;}
    else {
      const fraction=u>0?Math.min(1,q/u):0;
      basis=Math.max(0,basis*(1-fraction));
@@ -224,7 +224,7 @@ function recalculateHoldings(){
   h.units=u;h.capital=basis;
   if(h.valuationMode==="provider"&&Number.isFinite(Number(h.providerValue))){
     const anchor=new Set(Array.isArray(h.providerAnchorIds)?h.providerAnchorIds:[]);
-    const uncounted=events.filter(t=>!anchor.has(t.id)).reduce((sum,t)=>sum+(t.type==="buy"?numeric(t.amount):-numeric(t.amount)),0);
+    const uncounted=events.filter(t=>!anchor.has(t.id)).reduce((sum,t)=>sum+((t.type==="buy"||t.type==="transfer_in")?numeric(t.amount):-numeric(t.amount)),0);
     h.accountValue=Math.max(0,numeric(h.providerValue)+uncounted);
   } else h.accountValue=h.valuationMode==="market"&&u>0&&numeric(h.price)>0&&(h.nativeCurrency||"GBP")==="GBP"?u*numeric(h.price):value;
   result.push(h);
