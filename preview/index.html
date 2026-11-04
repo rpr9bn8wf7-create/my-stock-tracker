@@ -234,7 +234,7 @@ canvas{display:block;width:100%;height:230px}
     <div class="v13-toolbar"><h2 id="detailName">Holding details</h2><button type="button" class="secondary" id="closeDetail">Close details</button></div>
     <div class="v13-stat"><div class="metric"><small>Current value</small><div class="value" id="detailValue">—</div></div><div class="metric"><small>Holding gain / loss</small><div class="value" id="detailGain">—</div></div><div class="metric"><small>Units</small><div class="value" id="detailUnits">—</div></div></div>
     <div class="v13-review" style="margin-top:10px"><div>Cost basis<strong id="detailCost">—</strong></div><div>Latest unit price<strong id="detailPrice">—</strong></div><div>Account<strong id="detailAccount">—</strong></div><div>Fund ongoing charge<strong id="detailOcf">—</strong></div></div>
-    <div class="v13-toolbar" style="margin-top:18px"><h3>Activity history</h3><button type="button" class="secondary" id="detailJourney">See Investment Journey →</button></div><div id="detailTransactions"></div>
+    <div class="v13-toolbar" style="margin-top:18px"><h3>Activity history</h3><div class="v13-small-actions"><button type="button" class="secondary" id="detailUpdateValue">Update current value</button><button type="button" class="secondary" id="detailJourney">See Investment Journey →</button></div></div><div id="detailTransactions"></div>
   </section>
   <section class="panel">
     <h2>Back up your Morrow data</h2>
@@ -347,6 +347,16 @@ canvas{display:block;width:100%;height:230px}
 </section>
 </main>
 
+<div class="v13-modal" id="valuationModal" hidden role="dialog" aria-modal="true" aria-labelledby="valuationTitle"><div class="v13-dialog">
+  <div class="v13-dialog-header"><h2 id="valuationTitle">Update your investment value</h2><button type="button" id="closeValuationModal" class="v13-close" aria-label="Close">×</button></div>
+  <p class="v13-plain">Use the latest value from your investment provider. This updates the market value without changing your contributions or the imported transaction history.</p>
+  <form id="valuationForm"><div class="form-grid">
+    <div><label for="valuationAmount">Current holding value (£)</label><input id="valuationAmount" type="number" min="0" step="any" required></div>
+    <div><label for="valuationDate">Value date</label><input id="valuationDate" type="date" required></div>
+    <div><label for="valuationPrice">Latest unit price (£, optional)</label><input id="valuationPrice" type="number" min="0" step="any"></div>
+  </div><p class="field-hint">Morrow won't overwrite this with an unrelated price-feed quote. Additional trades will be reflected from this updated valuation.</p>
+  <div class="wizard-footer"><button type="submit" class="primary">Save current value</button></div></form>
+</div></div>
 <div class="v13-modal" id="transactionModal" hidden role="dialog" aria-modal="true" aria-labelledby="transactionModalTitle"><div class="v13-dialog">
   <div class="v13-dialog-header"><div><div class="eyebrow">Update your records</div><h2 id="transactionModalTitle">Add a transaction</h2></div><button type="button" id="closeTransactionModal" class="v13-close" aria-label="Close">×</button></div>
   <form id="transactionForm"><div class="form-grid">
