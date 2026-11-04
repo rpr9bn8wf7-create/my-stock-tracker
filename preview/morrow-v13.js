@@ -488,14 +488,23 @@ function candidateFromRow(row,index){
  if(base&&date&&base.snapshotDate&&date<=base.snapshotDate){t.historical=true;reason.push("On/before snapshot; reference only");}
  if(!base&&epoch&&date&&date<=epoch){t.historical=true;reason.push("Before portfolio snapshot; reference only");}
  t.fingerprint=signature(t);
- const possibleDuplicate=transactions.some(existing=>signature(existing)===t.fingerprint||(t.reference&&existing.reference===t.reference&&existing.source===t.source))||pendingRows.some(p=>signature(p.t)===t.fingerprint);
+ const possibleDuplicate=transactions.some(existing=>signature(existing)===t.fingerprint||(t.reference&&existing.reference===t.reference&&existing.source===t.source));
  if(possibleDuplicate)reason.push("Possible duplicate");
  return {t,index,reason,blocked:reason.some(r=>!r.includes("snapshot")&&!r.includes("reference only")&&!r.includes("duplicate")),duplicate:possibleDuplicate,selected:!possibleDuplicate&&!reason.some(r=>!r.includes("snapshot")&&!r.includes("reference only"))};
 }
 function makeImportPreview(){
  mapFromControls();
  if(csvMap.date===""||csvMap.type===""){el("importStatus").className="v13-status warning";el("importStatus").textContent="Map at least the Date and Type columns to preview transactions.";el("importReview").hidden=true;return;}
- const rows=csvRowsData.slice(1);pendingRows=rows.map(candidateFromRow);
+ const rows=csvRowsData.slice(1);pendingRows=[];
+ const seen=new Set();
+ rows.forEach((row,i)=>{
+   const p=candidateFromRow(row,i);
+   const key=p.t.reference?["ref",p.t.reference,p.t.source].join("|"):signature(p.t);
+   if(seen.has(key)){
+     p.reason.push("Possible duplicate in this file");p.duplicate=true;p.selected=false;
+   }
+   seen.add(key);pendingRows.push(p);
+ });
  const valid=pendingRows.filter(p=>!p.blocked).length,duplicates=pendingRows.filter(p=>p.duplicate).length,flagged=pendingRows.filter(p=>p.t.historical).length;
  el("importStatus").className="v13-status";
  el("importStatus").textContent=rows.length+" rows · "+valid+" usable · "+duplicates+" possible duplicates · "+flagged+" historical-only. Review the selection before importing.";
