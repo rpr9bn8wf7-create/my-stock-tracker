@@ -30,6 +30,7 @@ function holdingCost(h){return Number.isFinite(Number(h.capital))?numeric(h.capi
 function holdingValue(h){return Number.isFinite(Number(h.accountValue))?numeric(h.accountValue):numeric(h.units)*numeric(h.price);}
 function valuation(h){
  const raw=holdingValue(h),calculated=numeric(h.units)*numeric(h.price);
+ if(h.valuationMode==="provider")return Number.isFinite(Number(h.accountValue))?numeric(h.accountValue):raw;
  return h.valuationMode==="market"&&numeric(h.units)>0&&numeric(h.price)>0&&(h.nativeCurrency||"GBP")==="GBP"?calculated:raw;
 }
 function signedCash(t){
@@ -60,7 +61,8 @@ function accountFee(a){
    const combined=group.reduce((s,x)=>s+accountInvestedBalance(x.id),0);
    const hasSelf=group.some(x=>x.feeModel==="vanguard-self");
    const charge=hasSelf&&combined<32000?48:Math.min(375,combined*0.0015);
-   return combined>0?charge*balance/combined:0;
+   const share=combined>0?charge*balance/combined:0;
+   return share+(a.feeModel==="vanguard-managed"?balance*0.002:0);
  }
  if(a.feeModel==="custom")return Math.min(a.annualCap>0?numeric(a.annualCap):Infinity,numeric(a.fixedAnnual)+balance*numeric(a.percentAnnual)/100);
  return null;
@@ -98,7 +100,7 @@ function renderV13(){
    '<div><div class="holding-value">'+pounds(value)+'</div><div class="'+cls+'">'+pounds(gain)+' ('+(cost?gain/cost*100:0).toFixed(2)+'%)</div></div>'+
    '<div class="holding-actions v13-small-actions"><button class="secondary" type="button" data-holding-detail="'+esc(h.id)+'">Details & activity</button><button class="secondary" type="button" data-holding-journey="'+esc(h.id)+'">Investment journey</button><button class="secondary" type="button" data-holding-edit="'+esc(h.id)+'">Edit snapshot</button><button class="danger" type="button" data-holding-remove="'+esc(h.id)+'">Remove</button></div></article>';
  }).join(""):'<div class="empty">No investments yet. Choose <strong>New investment</strong> or <strong>Import CSV</strong> to begin.</div>';
- el("v13Disclaimer").textContent="Returns use recorded starting values and net external cash flows, not a time-weighted return. Market valuations are only refreshed where a compatible price feed is available. Morrow stores records locally in this browser.";
+ el("v13Disclaimer").textContent="Returns use recorded starting values and net external cash flows, not a time-weighted return. Most holdings need periodic provider-value updates; only compatible GBP holdings use the market feed. Morrow stores records locally in this browser.";
  renderTransactions();
  renderAccounts();
  if(activeDetailId)renderDetail();
@@ -160,10 +162,10 @@ function refreshFeePreview(){
  el("newAccountFields").hidden=!isNew;
  if(isNew){
   const model=el("newFeeModel").value;
-  el("wizardFeeText").textContent=model.startsWith("vanguard")?"Vanguard UK indicative template: £48/year below £32,000 for self-managed accounts, otherwise 0.15% a year (max £375), subject to account type. Confirm the current terms with your provider.":"No published fees are assumed for this provider. Add or edit its charges in Costs & fees.";
+  el("wizardFeeText").textContent=model.startsWith("vanguard")?"Vanguard UK indicative rates: self-managed can cost £4/month below £32,000, otherwise 0.15% annually (max £375). Junior ISA has no £4/month minimum. Managed adds a 0.20% management fee. Verify your terms.":"No published fees are assumed for this provider. Add or edit its charges in Costs & fees.";
  }else{
   const a=getAccount(el("holdingAccount").value),fee=accountFee(a);
-  el("wizardFeeText").textContent=fee===null?"Fees not configured for this account yet. You can add them in Costs & fees.":"Indicative annual account fee: "+pounds(fee)+" at the currently recorded balance. Actual charges may differ.";
+  el("wizardFeeText").textContent=fee===null?"Fees not configured for this account yet. You can add them in Costs & fees.":"Indicative annual provider fees: "+pounds(fee)+" at the currently recorded balance. Actual charges may differ.";
  }
 }
 function resolveHoldingAccount(){
@@ -206,7 +208,7 @@ function recalculateHoldings(){
   if(!base||!base.id)continue;
   const last=liveById.get(base.id);
   const h={...base,accountId:base.accountId||"default"};
-  if(last){h.price=last.price;h.quoteDate=last.quoteDate;h.quoteSource=last.quoteSource;h.journeyMonthly=last.journeyMonthly;h.valuationMode=last.valuationMode||base.valuationMode;}
+  if(last){h.price=last.price;h.quoteDate=last.quoteDate;h.quoteSource=last.quoteSource;h.journeyMonthly=last.journeyMonthly;h.valuationMode=last.valuationMode||base.valuationMode;h.providerValue=last.providerValue;h.providerAnchorIds=last.providerAnchorIds;}
   const events=transactions.filter(t=>!t.historical&&t.holdingId===h.id&&(t.type==="buy"||t.type==="sell")).sort((a,b)=>a.date.localeCompare(b.date)||a.id.localeCompare(b.id));
   let u=numeric(h.units),basis=holdingCost(h),value=holdingValue(h);
   for(const t of events){
@@ -219,7 +221,12 @@ function recalculateHoldings(){
      u=Math.max(0,u-q);
    }
   }
-  h.units=u;h.capital=basis;h.accountValue=h.valuationMode==="market"&&u>0&&numeric(h.price)>0&&(h.nativeCurrency||"GBP")==="GBP"?u*numeric(h.price):value;
+  h.units=u;h.capital=basis;
+  if(h.valuationMode==="provider"&&Number.isFinite(Number(h.providerValue))){
+    const anchor=new Set(Array.isArray(h.providerAnchorIds)?h.providerAnchorIds:[]);
+    const uncounted=events.filter(t=>!anchor.has(t.id)).reduce((sum,t)=>sum+(t.type==="buy"?numeric(t.amount):-numeric(t.amount)),0);
+    h.accountValue=Math.max(0,numeric(h.providerValue)+uncounted);
+  } else h.accountValue=h.valuationMode==="market"&&u>0&&numeric(h.price)>0&&(h.nativeCurrency||"GBP")==="GBP"?u*numeric(h.price):value;
   result.push(h);
  }
  holdings=result;
@@ -361,6 +368,28 @@ let activeDetailId="";
 function openDetail(id){activeDetailId=id;renderDetail();el("holdingDetail").scrollIntoView({behavior:"smooth",block:"start"});}
 el("closeDetail").addEventListener("click",()=>{activeDetailId="";el("holdingDetail").hidden=true;});
 el("detailJourney").addEventListener("click",()=>{if(activeDetailId)openJourney(activeDetailId);});
+function closeValuation(){el("valuationModal").hidden=true;document.body.style.overflow="";}
+el("detailUpdateValue").addEventListener("click",()=>{
+ const h=holdings.find(h=>h.id===activeDetailId);if(!h)return;
+ el("valuationAmount").value=valuation(h).toFixed(2);
+ el("valuationPrice").value=h.price??"";
+ el("valuationDate").value=today();
+ el("valuationModal").hidden=false;document.body.style.overflow="hidden";
+});
+el("closeValuationModal").addEventListener("click",closeValuation);
+el("valuationModal").addEventListener("click",e=>{if(e.target.id==="valuationModal")closeValuation();});
+el("valuationForm").addEventListener("submit",e=>{
+ e.preventDefault();
+ const h=holdings.find(h=>h.id===activeDetailId);if(!h)return;
+ const v=Number(el("valuationAmount").value),date=normaliseDate(el("valuationDate").value);
+ if(!Number.isFinite(v)||v<0||!date){alert("Enter a valid value and date.");return;}
+ h.valuationMode="provider";h.providerValue=v;
+ h.providerAnchorIds=transactions.filter(t=>!t.historical&&t.holdingId===h.id&&["buy","sell"].includes(t.type)).map(t=>t.id);
+ h.accountValue=v;
+ if(el("valuationPrice").value!=="")h.price=Math.max(0,numeric(el("valuationPrice").value));
+ h.quoteDate=date;h.quoteSource="Provider value entered manually";
+ saveV13();closeValuation();
+});
 document.addEventListener("click",e=>{
  const b=e.target.closest("[data-holding-detail],[data-holding-journey],[data-holding-edit],[data-holding-remove],[data-tx-remove]");
  if(!b)return;
@@ -459,7 +488,7 @@ function candidateFromRow(row,index){
  if(base&&date&&base.snapshotDate&&date<=base.snapshotDate){t.historical=true;reason.push("On/before snapshot; reference only");}
  if(!base&&epoch&&date&&date<=epoch){t.historical=true;reason.push("Before portfolio snapshot; reference only");}
  t.fingerprint=signature(t);
- const possibleDuplicate=transactions.some(existing=>signature(existing)===t.fingerprint||(t.reference&&existing.reference===t.reference&&existing.source===t.source));
+ const possibleDuplicate=transactions.some(existing=>signature(existing)===t.fingerprint||(t.reference&&existing.reference===t.reference&&existing.source===t.source))||pendingRows.some(p=>signature(p.t)===t.fingerprint);
  if(possibleDuplicate)reason.push("Possible duplicate");
  return {t,index,reason,blocked:reason.some(r=>!r.includes("snapshot")&&!r.includes("reference only")&&!r.includes("duplicate")),duplicate:possibleDuplicate,selected:!possibleDuplicate&&!reason.some(r=>!r.includes("snapshot")&&!r.includes("reference only"))};
 }
@@ -503,14 +532,14 @@ el("confirmImportButton").addEventListener("click",()=>{
  let newHoldings=0;
  for(const p of selected){
   const t={...p.t};
-  const matching=transactions.some(x=>signature(x)===signature(t));
+  const matching=transactions.some(x=>signature(x)===signature(t))||incoming.some(x=>signature(x)===signature(t));
   if(matching&&!confirm("A selected transaction looks like one you've already imported. Import this potential duplicate anyway?"))continue;
   if(["buy","sell"].includes(t.type)&&!t.holdingId&&!t.historical){
    if(t.type==="sell"){alert("A sale has no matching investment: "+t.ticker+". Importing it as a historical reference only.");t.historical=true;}
    else{
     let h=holdings.find(h=>h.ticker===t.ticker&&h.accountId===t.accountId);
     if(!h){
-     h={id:uid(),ticker:t.ticker,name:t.description||t.ticker,accountId:t.accountId,capital:0,accountValue:0,incomeEarned:0,units:0,buy:0,price:t.units?t.amount/t.units:0,quoteDate:t.date,notes:"Created from CSV import",nativeCurrency:"GBP",valuationMode:"snapshot"};
+     h={id:uid(),ticker:t.ticker,name:t.description||t.ticker,accountId:t.accountId,capital:0,accountValue:0,incomeEarned:0,units:0,buy:0,price:t.units?t.amount/t.units:0,quoteDate:t.date,notes:"Created from CSV import",nativeCurrency:"GBP",valuationMode:t.ticker==="VUAG"?"market":"snapshot"};
      baselines[h.id]={...h,snapshotDate:"1970-01-01"};
      holdings.push(h);newHoldings++;
     }
@@ -526,6 +555,7 @@ el("confirmImportButton").addEventListener("click",()=>{
  }
  if(!incoming.length)return;
  recordTransactions(incoming);
+ if(incoming.some(t=>t.ticker==="VUAG"&&!t.historical))refreshPortfolioPrices();
  el("importModal").hidden=true;document.body.style.overflow="";
  el("importFileV13").value="";el("importMapping").hidden=true;el("importReview").hidden=true;
  alert("Imported "+incoming.length+" records"+(newHoldings?" and created "+newHoldings+" investment(s)":"")+". Historical-only records have not changed balances.");
@@ -545,7 +575,7 @@ function renderAccounts(){
  el("feesActual").textContent=pounds(portfolioMetrics().fees);
  el("accountsList").innerHTML=accounts.map(a=>{
   const fee=accountFee(a);
-  return '<div class="v13-row"><div><strong>'+esc(a.name)+'</strong><small>'+esc(a.provider)+' · '+esc(a.kind||"Investment account")+' · Invested assets '+pounds(accountInvestedBalance(a.id))+' · Cash '+pounds(cashFor(a.id))+'</small><small>'+(fee===null?"Account fee template not configured":"Indicative annual platform fee "+pounds(fee))+'</small></div><button class="secondary" type="button" data-account-edit="'+esc(a.id)+'">Edit account</button></div>';
+  return '<div class="v13-row"><div><strong>'+esc(a.name)+'</strong><small>'+esc(a.provider)+' · '+esc(a.kind||"Investment account")+' · Invested assets '+pounds(accountInvestedBalance(a.id))+' · Cash '+pounds(cashFor(a.id))+'</small><small>'+(fee===null?"Account fee template not configured":"Indicative annual provider fees "+pounds(fee))+'</small></div><button class="secondary" type="button" data-account-edit="'+esc(a.id)+'">Edit account</button></div>';
  }).join("");
 }
 function setFeeTemplateForForm(){
