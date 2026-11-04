@@ -79,7 +79,6 @@ function renderV13(){
  el("percent").className="meta "+(m.gain>=0?"positive":"negative");
  el("v13Income").textContent=pounds(m.income);
  el("v13Fees").textContent=pounds(m.fees);
- el("v13Cash").textContent=pounds(m.cash);
  let basis=Math.max(0,m.invested),growth=Math.max(0,m.total-m.invested),denominator=basis+growth;
  const percent=denominator>0?basis/denominator*100:100;
  el("portfolioDonut").style.background="conic-gradient(var(--orange) 0 "+percent+"%,var(--green) "+percent+"% 100%)";
