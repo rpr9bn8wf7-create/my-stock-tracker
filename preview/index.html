@@ -178,10 +178,13 @@ canvas{display:block;width:100%;height:230px}
       <div class="form-grid">
         <div class="search-wrap"><label for="ticker">Find an investment</label><input id="ticker" placeholder="Search company or ticker, e.g. Apple or VUAG" autocomplete="off" required aria-autocomplete="list" aria-controls="tickerSuggestions"><div id="tickerSuggestions" class="suggestions" role="listbox" hidden></div><div id="instrumentMeta" class="instrument-meta">Search by company name or ticker symbol.</div></div>
         <div><label for="name">Investment name</label><input id="name" placeholder="Selected investment name" required></div>
-        <div><label for="units">Number of shares / units</label><input id="units" type="number" min="0" step="any" placeholder="e.g. 25" required></div>
-        <div><label for="buy">Average purchase price per unit (£)</label><input id="buy" type="number" min="0" step="any" placeholder="e.g. 85.50" required></div>
-        <div><label for="price">Latest price per unit (£)</label><input id="price" type="number" min="0" step="any" placeholder="e.g. 92.10" required></div>
+        <div><label for="capital">Total amount invested (£)</label><input id="capital" type="number" min="0" step="any" placeholder="e.g. 10,000.00" required><div class="field-hint">Your net contributions to date, after any withdrawals.</div></div>
+        <div><label for="accountValue">Current account value (£)</label><input id="accountValue" type="number" min="0" step="any" placeholder="e.g. 12,450.00" required><div class="field-hint">From your investment provider dashboard.</div></div>
+        <div><label for="units">Number of shares / units (optional)</label><input id="units" type="number" min="0" step="any" placeholder="e.g. 25"></div>
+        <div><label for="buy">Average purchase price per unit (optional)</label><input id="buy" type="number" min="0" step="any" placeholder="e.g. 85.50"></div>
+        <div><label for="price">Latest price per unit (optional)</label><input id="price" type="number" min="0" step="any" placeholder="e.g. 92.10"></div>
         <div><label for="quoteDate">Date of latest price</label><input id="quoteDate" type="date"></div>
+        <div><label for="incomeEarned">Income received to date (optional, £)</label><input id="incomeEarned" type="number" min="0" step="any" placeholder="e.g. 150.00"><div class="field-hint">Include income received, not dividends already reinvested.</div></div>
       </div>
       <label for="notes">Notes (optional)</label><textarea id="notes" rows="2" placeholder="Account, investment notes..."></textarea>
       <div class="actions"><button type="submit" class="primary" id="saveButton">Add investment</button><button type="button" class="secondary" id="cancelButton" hidden>Cancel edit</button></div>
@@ -321,14 +324,14 @@ function showView(id){
 function save(){localStorage.setItem(storageKey,JSON.stringify(holdings));render();}
 function escapeHTML(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 function render(){
- const invested=holdings.reduce((s,h)=>s+h.units*h.buy,0),total=holdings.reduce((s,h)=>s+h.units*h.price,0),profit=total-invested;
+ const invested=holdings.reduce((s,h)=>s+(Number.isFinite(Number(h.capital))?Number(h.capital):h.units*h.buy),0),total=holdings.reduce((s,h)=>s+(Number.isFinite(Number(h.accountValue))?Number(h.accountValue):h.units*h.price),0),profit=total-invested;
  $("total").textContent=money(total);$("invested").textContent=money(invested);$("profit").textContent=money(profit);
  $("profit").className="value "+(profit>=0?"positive":"negative");
  $("percent").textContent=(invested?profit/invested*100:0).toFixed(2)+"% overall";
  $("percent").className="meta "+(profit>=0?"positive":"negative");
  if(!holdings.length){$("holdings").innerHTML='<p class="empty">No investments added yet. Add your first investment above.</p>';return;}
  $("holdings").innerHTML=holdings.map(h=>{
-  const cost=h.units*h.buy,value=h.units*h.price,gain=value-cost,cls=gain>=0?"positive":"negative";
+  const cost=Number.isFinite(Number(h.capital))?Number(h.capital):h.units*h.buy,value=Number.isFinite(Number(h.accountValue))?Number(h.accountValue):h.units*h.price,gain=value-cost,cls=gain>=0?"positive":"negative";
   return '<div class="holding"><strong>'+escapeHTML(h.name)+'</strong> <span class="meta">('+escapeHTML(h.ticker)+')</span>'+
   '<div class="meta">'+h.units+' units · Average buy '+money(h.buy)+' · Latest '+money(h.price)+'</div>'+
   '<div class="meta">Holding value: <strong>'+money(value)+'</strong></div>'+
@@ -393,13 +396,13 @@ async function refreshPortfolioPrices(){
 }
 $("holdingForm").addEventListener("submit",e=>{
  e.preventDefault();const id=$("editId").value||(Date.now().toString()+Math.random().toString(16).slice(2));
- const item={id,ticker:$("ticker").value.trim().toUpperCase(),name:$("name").value.trim(),units:number($("units").value),buy:number($("buy").value),price:number($("price").value),quoteDate:$("quoteDate").value,notes:$("notes").value.trim(),exchange:selectedInstrument?.exchange||"",micCode:selectedInstrument?.micCode||"",nativeCurrency:selectedInstrument?.currency||"GBP",instrumentType:selectedInstrument?.instrumentType||"Manual entry"};
+ const item={id,ticker:$("ticker").value.trim().toUpperCase(),name:$("name").value.trim(),capital:number($("capital").value),accountValue:number($("accountValue").value),incomeEarned:number($("incomeEarned").value),units:number($("units").value),buy:number($("buy").value),price:number($("price").value),quoteDate:$("quoteDate").value,notes:$("notes").value.trim(),exchange:selectedInstrument?.exchange||"",micCode:selectedInstrument?.micCode||"",nativeCurrency:selectedInstrument?.currency||"GBP",instrumentType:selectedInstrument?.instrumentType||"Manual entry"};
  const index=holdings.findIndex(h=>h.id===id);if(index>=0){item.quoteSource=holdings[index].quoteSource;item.journeyMonthly=holdings[index].journeyMonthly;holdings[index]=item;}else holdings.push(item);
  resetForm();save();refreshPortfolioPrices();
 });
 function editHolding(id){
  const h=holdings.find(x=>x.id===id);if(!h)return;
- $("editId").value=h.id;selectedInstrument={symbol:h.ticker,name:h.name,exchange:h.exchange||"",micCode:h.micCode||"",currency:h.nativeCurrency||"GBP",instrumentType:h.instrumentType||"Manual entry"};$("instrumentMeta").textContent=[selectedInstrument.exchange,selectedInstrument.micCode,selectedInstrument.instrumentType,selectedInstrument.currency].filter(Boolean).join(" · ");["ticker","name","units","buy","price","quoteDate","notes"].forEach(k=>$(k).value=h[k]??"");
+ $("editId").value=h.id;selectedInstrument={symbol:h.ticker,name:h.name,exchange:h.exchange||"",micCode:h.micCode||"",currency:h.nativeCurrency||"GBP",instrumentType:h.instrumentType||"Manual entry"};$("instrumentMeta").textContent=[selectedInstrument.exchange,selectedInstrument.micCode,selectedInstrument.instrumentType,selectedInstrument.currency].filter(Boolean).join(" · ");["ticker","name","capital","accountValue","incomeEarned","units","buy","price","quoteDate","notes"].forEach(k=>$(k).value=h[k]??"");
  $("formTitle").textContent="Edit investment";$("saveButton").textContent="Save changes";$("cancelButton").hidden=false;window.scrollTo({top:0,behavior:"smooth"});
 }
 function deleteHolding(id){if(!confirm("Remove this investment from your tracker?"))return;holdings=holdings.filter(h=>h.id!==id);save();}
@@ -422,7 +425,7 @@ function openJourney(id){
  activeJourney=holdings.find(h=>h.id===id);if(!activeJourney)return;
  $("journeyName").textContent=activeJourney.name+" ("+activeJourney.ticker+")";
  $("journeySubtitle").textContent="Your investment journey — past performance and possible future scenarios.";
- const value=activeJourney.units*activeJourney.price,cost=activeJourney.units*activeJourney.buy,gain=value-cost;
+ const value=Number.isFinite(Number(activeJourney.accountValue))?Number(activeJourney.accountValue):activeJourney.units*activeJourney.price,cost=Number.isFinite(Number(activeJourney.capital))?Number(activeJourney.capital):activeJourney.units*activeJourney.buy,gain=value-cost;
  $("journeyPrice").textContent=money(activeJourney.price);$("journeyValue").textContent=money(value);
  $("journeyUnits").textContent=Number(activeJourney.units).toLocaleString("en-GB")+" units";
  $("journeyGain").textContent=money(gain);$("journeyGain").className="value "+(gain>=0?"positive":"negative");
@@ -466,7 +469,7 @@ function drawHistoryChart(data){
 }
 function calculateJourneyScenarios(){
  if(!activeJourney)return;
- const years=Number($("journeyYears").value),start=activeJourney.units*activeJourney.price,monthly=projectionMode==="monthly"?Math.max(0,number(activeJourney.journeyMonthly)):0;
+ const years=Number($("journeyYears").value),start=Number.isFinite(Number(activeJourney.accountValue))?Number(activeJourney.accountValue):activeJourney.units*activeJourney.price,monthly=projectionMode==="monthly"?Math.max(0,number(activeJourney.journeyMonthly)):0;
  const rates=[{name:"Cautious",rate:.02,color:"#F28C28"},{name:"Moderate",rate:.05,color:"#55A9F5"},{name:"Optimistic",rate:.08,color:"#71D6A0"}];
  const results=rates.map(s=>{let balance=start;const r=Math.pow(1+s.rate,1/12)-1,pts=[balance];for(let m=1;m<=years*12;m++){balance=balance*(1+r)+monthly;if(m%12===0)pts.push(balance);}return {...s,value:balance,points:pts};});
  $("scenarioResults").innerHTML=results.map(s=>'<div class="scenario-row"><span><i class="scenario-dot" style="background:'+s.color+'"></i>'+s.name+' ('+(s.rate*100).toFixed(0)+'% p.a.)</span><strong>'+money(s.value)+'</strong></div>').join("")+'<p class="meta" style="margin-top:8px">'+(projectionMode==="monthly"?"Includes "+money(monthly)+" added at the end of each month.":"No additional contributions included.")+'</p>';
